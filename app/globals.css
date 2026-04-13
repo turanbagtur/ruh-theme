@@ -520,22 +520,30 @@ select {
 
 .hero-slide-meta {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   align-items: center;
   margin-bottom: 18px;
+  flex-wrap: wrap;
 }
 
 .hero-slide-meta span {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 5px;
   font-size: 0.78rem;
-  color: var(--text-secondary);
+  font-weight: 600;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(6px);
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .hero-slide-meta svg {
   width: 14px;
   height: 14px;
+  flex-shrink: 0;
 }
 
 .hero-slide-genres {
@@ -3013,15 +3021,18 @@ select {
 /* Scanlation Structure Layout */
 .main-layout {
   display: grid;
-  grid-template-columns: 1fr 340px;
+  grid-template-columns: minmax(0, 1fr) 340px;
   gap: 32px;
   align-items: start;
+  overflow: hidden;
 }
 
 .sidebar {
   display: flex;
   flex-direction: column;
   gap: 24px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .sidebar-widget {
@@ -3029,6 +3040,9 @@ select {
   border: 1px solid var(--border-color);
   border-radius: var(--radius-xl);
   padding: 20px;
+  min-width: 0;
+  overflow: hidden;
+  max-width: 100%;
 }
 
 .widget-header {
@@ -3417,6 +3431,9 @@ select {
   border-bottom: 1px solid var(--border);
   text-decoration: none;
   transition: background var(--transition);
+  min-width: 0;
+  overflow: hidden;
+  max-width: 100%;
 }
 
 .asura-sidebar-item:last-child {
@@ -3570,6 +3587,7 @@ select {
 .asura-sidebar-info {
   flex: 1;
   min-width: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -4938,11 +4956,32 @@ a.ann-message:hover {
 
 /* ─── Mobile Sidebar Widget Fixes ─────────────────────────── */
 @media (max-width: 1024px) {
+  .main-layout {
+    overflow: hidden;
+  }
+  .sidebar {
+    min-width: 0;
+    overflow: hidden;
+    width: 100%;
+  }
   .sidebar-widget {
     overflow: hidden;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+  .editor-pick-widget {
+    overflow: hidden;
+    max-width: 100%;
   }
   .editor-pick-widget .epw-info {
     overflow: hidden;
+    min-width: 0;
+  }
+  .epw-title {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .epw-desc {
     display: -webkit-box;
@@ -4953,13 +4992,49 @@ a.ann-message:hover {
   }
   .asura-sidebar-title {
     word-break: break-word;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .asura-sidebar-item {
+    overflow: hidden;
+    min-width: 0;
+    max-width: 100%;
+  }
+  .asura-sidebar-info {
+    overflow: hidden;
+    min-width: 0;
+  }
+  .asura-sidebar-meta {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+  .ranking-tabs-small {
+    overflow: hidden;
+  }
+  .ranking-tabs-small button {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .mr-widget {
+    overflow: hidden;
+    max-width: 100%;
   }
 }
 
 @media (max-width: 768px) {
-  .sidebar-widget {
-    max-width: 100%;
+  .sidebar {
+    width: 100% !important;
+    max-width: 100vw;
     overflow: hidden;
+  }
+  .sidebar-widget {
+    max-width: calc(100vw - 32px);
+    overflow: hidden;
+    box-sizing: border-box;
   }
   .sidebar-widget .sidebar-list {
     max-width: 100%;
