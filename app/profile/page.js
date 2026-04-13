@@ -1,0 +1,461 @@
+'use client';
+import { useAuth } from '@/components/AuthProvider';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import SeriesCard from '@/components/SeriesCard';
+import { getCultivationData } from '@/lib/gamification';
+
+// Quest icon mapper
+function QuestIcon({ icon, size = 18 }) {
+    if (icon === 'sun') return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+            <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+        </svg>
+    );
+    if (icon === 'book') return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+        </svg>
+    );
+    if (icon === 'chat') return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+    );
+    // fallback check icon
+    return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <polyline points="20 6 9 17 4 12"/>
+        </svg>
+    );
+}
+
+function CheckCircleIcon({ size = 18 }) {
+    return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+        </svg>
+    );
+}
+
+export default function ProfilePage() {
+    const { user, loading, logout, authFetch, updateUser, refreshUser } = useAuth();
+    const router = useRouter();
+    const [tab, setTab] = useState('overview');
+    const [msg, setMsg] = useState('');
+    const [msgType, setMsgType] = useState('success');
+
+    // Profile form
+    const [username, setUsername] = useState('');
+    const [email, setEmail] = useState('');
+    const [avatarUrl, setAvatarUrl] = useState('');
+    const [saving, setSaving] = useState(false);
+
+    // Password form
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+
+    // Favorites
+    const [favorites, setFavorites] = useState([]);
+    const [loadingFavs, setLoadingFavs] = useState(true);
+
+    // Stats
+    const [userStats, setUserStats] = useState({ favoriteCount: 0, commentCount: 0 });
+
+    // Quests
+    const [quests, setQuests] = useState([]);
+    const [questLoading, setQuestLoading] = useState(false);
+    const [claimingQuest, setClaimingQuest] = useState(null);
+
+    useEffect(() => {
+        if (!loading && !user) router.push('/login');
+    }, [user, loading, router]);
+
+    useEffect(() => {
+        if (user) {
+            setUsername(user.username);
+            setEmail(user.email);
+            setAvatarUrl(user.avatar_url || '');
+            fetchFavorites();
+            fetchQuests();
+        }
+    }, [user]);
+
+    async function fetchFavorites() {
+        try {
+            const res = await authFetch('/api/favorites/list');
+            const data = await res.json();
+            const favs = data.favorites || [];
+            setFavorites(favs);
+            setUserStats(prev => ({ ...prev, favoriteCount: favs.length }));
+        } catch { }
+        finally { setLoadingFavs(false); }
+    }
+
+    async function fetchQuests() {
+        try {
+            const res = await authFetch('/api/users/quests');
+            const data = await res.json();
+            setQuests(data.quests || []);
+        } catch {}
+    }
+
+    async function claimQuest(questId) {
+        setClaimingQuest(questId);
+        try {
+            const res = await authFetch('/api/users/quests', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ questId })
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+                show(`🎉 ${data.message}`, 'success');
+                await fetchQuests();
+                if (refreshUser) await refreshUser();
+            } else {
+                show(data.error || 'Failed', 'error');
+            }
+        } catch (err) { show(err.message, 'error'); }
+        finally { setClaimingQuest(null); }
+    }
+
+    function show(text, type = 'success') {
+        setMsg(text); setMsgType(type);
+        setTimeout(() => setMsg(''), 4000);
+    }
+
+    async function handleProfileUpdate(e) {
+        e.preventDefault();
+        setSaving(true);
+        try {
+            const res = await authFetch('/api/auth/profile', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, email, avatar_url: avatarUrl }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+            updateUser(data.user);
+            show(data.message);
+        } catch (err) { show(err.message, 'error'); }
+        finally { setSaving(false); }
+    }
+
+    async function handlePasswordChange(e) {
+        e.preventDefault();
+        if (newPassword !== confirmPassword) return show('Passwords do not match', 'error');
+        if (newPassword.length < 6) return show('Password must be at least 6 characters', 'error');
+        setSaving(true);
+        try {
+            const res = await authFetch('/api/auth/profile', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ currentPassword, newPassword }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+            show('Password changed successfully');
+            setCurrentPassword(''); setNewPassword(''); setConfirmPassword('');
+        } catch (err) { show(err.message, 'error'); }
+        finally { setSaving(false); }
+    }
+
+    function getMemberDays() {
+        if (!user?.created_at) return 0;
+        return Math.floor((Date.now() - new Date(user.created_at).getTime()) / 86400000);
+    }
+
+    function canUpdateAvatar() {
+        if (!user?.last_avatar_update) return { canUpdate: true, remainingHours: 0 };
+        const msInDay = 24 * 60 * 60 * 1000;
+        const lastUpdate = new Date(user.last_avatar_update + 'Z').getTime();
+        const diff = Date.now() - lastUpdate;
+        if (diff > msInDay) return { canUpdate: true, remainingHours: 0 };
+        return { canUpdate: false, remainingHours: Math.ceil((msInDay - diff) / (1000 * 60 * 60)) };
+    }
+
+    if (loading || !user) return <div className="page-loading"><div className="spinner" /></div>;
+
+    const tabs = [
+        { id: 'overview', label: 'Overview', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg> },
+        { id: 'favorites', label: 'Library', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg> },
+        { id: 'settings', label: 'Settings', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.604.852.997 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg> },
+        { id: 'security', label: 'Security', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg> },
+    ];
+
+    const cultivation = getCultivationData(user.yomi_points);
+    const avatarStatus = canUpdateAvatar();
+
+    return (
+        <div className="page-container page-section fade-in">
+            {/* Gamified RPG Profile Header */}
+            <div className="profile-header rpg-profile-header" style={{
+                background: 'linear-gradient(180deg, rgba(15,15,17,0.8), var(--bg-card))',
+                border: `1px solid ${cultivation.color}`,
+                boxShadow: `0 8px 32px ${cultivation.color}40`
+            }}>
+                <div className="rpg-profile-img-wrap">
+                    {(!user.avatar_url || user.avatar_url === '/default-avatar.png') ? (
+                        <div style={{ width: '100%', height: '100%', borderRadius: '50%', border: `4px solid ${cultivation.color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-tertiary)', color: 'var(--text-primary)', fontSize: '3rem', fontWeight: 800 }}>
+                            {user.username?.[0]?.toUpperCase()}
+                        </div>
+                    ) : (
+                        <img 
+                            src={user.avatar_url} 
+                            alt="Avatar" 
+                            style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', border: `4px solid ${cultivation.color}` }} 
+                        />
+                    )}
+                </div>
+                
+                <div style={{ flex: 1, zIndex: 1, width: '100%' }}>
+                    <h1 style={{ fontSize: '2.5rem', marginBottom: '4px', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>{user.username}</h1>
+                    
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '20px' }} className="rpg-title-badges">
+                        <span style={{ 
+                            background: `${cultivation.color}20`, 
+                            color: cultivation.color, 
+                            padding: '6px 14px', 
+                            borderRadius: '20px', 
+                            fontWeight: 800,
+                            letterSpacing: '1px',
+                            textTransform: 'uppercase',
+                            fontSize: '0.9rem',
+                            border: `1px solid ${cultivation.color}50`
+                        }}>
+                            {cultivation.title}
+                        </span>
+                        <span style={{ color: 'var(--text-muted)' }}>{getMemberDays()} Days Active</span>
+                    </div>
+
+                    <div style={{ width: '100%', maxWidth: '500px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.85rem', fontWeight: 700 }}>
+                            <span style={{ color: 'var(--text-primary)' }}>{user.yomi_points || 0} Yomi Point</span>
+                            <span style={{ color: 'var(--text-muted)' }}>
+                                {cultivation.nextRank ? `Next Rank: ${cultivation.nextRank.title} (${cultivation.nextRank.minPoints} YP)` : 'Max Rank Reached'}
+                            </span>
+                        </div>
+                        <div style={{ width: '100%', height: '8px', background: 'var(--bg-tertiary)', borderRadius: '4px', overflow: 'hidden' }}>
+                            <div style={{ 
+                                width: `${cultivation.progressPercent}%`, 
+                                height: '100%', 
+                                background: cultivation.progressColor,
+                                borderRadius: '4px',
+                                transition: 'width 1s ease-out'
+                            }} />
+                        </div>
+                    </div>
+                </div>
+                
+                {/* Decorative background element based on rank */}
+                <div style={{
+                    position: 'absolute',
+                    top: '-50%',
+                    right: '-10%',
+                    width: '300px',
+                    height: '300px',
+                    background: `radial-gradient(circle, ${cultivation.color}20 0%, transparent 70%)`,
+                    filter: 'blur(40px)',
+                    zIndex: 0,
+                    pointerEvents: 'none'
+                }} />
+            </div>
+
+            {/* Quick Stats */}
+            <div className="profile-stats-row" style={{ marginTop: '24px' }}>
+                <div className="profile-stat-card">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>
+                    <span className="profile-stat-number">{favorites.length}</span>
+                    <span className="profile-stat-label">Favorites</span>
+                </div>
+                <div className="profile-stat-card">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
+                    <span className="profile-stat-number">{user.yomi_points || 0}</span>
+                    <span className="profile-stat-label">Total Yomi Points</span>
+                </div>
+            </div>
+
+            {/* Tab Navigation */}
+            <div className="profile-tabs">
+                {tabs.map(t => (
+                    <button key={t.id} className={`profile-tab ${tab === t.id ? 'active' : ''}`} onClick={() => setTab(t.id)}>
+                        {t.icon} {t.label}
+                    </button>
+                ))}
+            </div>
+
+            {msg && <div className={`alert ${msgType === 'error' ? 'alert-error' : 'alert-success'}`} style={{ marginBottom: 16 }}>{msg}</div>}
+
+            {/* Overview */}
+            {tab === 'overview' && (
+                <div className="admin-grid">
+                    <div className="admin-card" style={{ cursor: 'pointer' }} onClick={() => setTab('favorites')}>
+                        <h3>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>
+                            My Library ({favorites.length})
+                        </h3>
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem' }}>
+                            {favorites.length > 0 ? `${favorites.length} series in your library` : 'Start reading and build your library!'}
+                        </p>
+                        {favorites.length > 0 && (
+                            <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
+                                {favorites.slice(0, 4).map(f => (
+                                    <div key={f.id} style={{ width: 36, height: 48, borderRadius: 4, overflow: 'hidden' }}>
+                                        <img src={f.cover_url || '/demo/cover1.jpg'} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    </div>
+                                ))}
+                                {favorites.length > 4 && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', alignSelf: 'center' }}>+{favorites.length - 4}</span>}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Daily Quests Card */}
+                    <div className="admin-card">
+                        <h3>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
+                            Daily Quests
+                        </h3>
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', marginTop: 4, marginBottom: 16 }}>
+                            Complete quests to earn Yomi Points!
+                        </p>
+                        <div className="quest-board">
+                            {quests.map(q => (
+                                <div key={q.id} className={`quest-card ${q.claimed ? 'completed' : ''}`}>
+                                    <div className="quest-icon" style={{ background: q.claimed ? '#22c55e20' : 'var(--bg-tertiary)', color: q.claimed ? '#22c55e' : 'var(--text-muted)' }}>
+                                        {q.claimed ? <CheckCircleIcon /> : <QuestIcon icon={q.icon} />}
+                                    </div>
+                                    <div className="quest-info">
+                                        <div className="quest-title">{q.title}</div>
+                                        <div className="quest-desc">{q.desc}</div>
+                                        <div className="quest-progress">
+                                            <div className="quest-progress-fill" style={{ width: `${Math.min(100, (q.progress / q.target) * 100)}%`, background: q.claimed ? '#22c55e' : undefined }} />
+                                        </div>
+                                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>{q.progress}/{q.target}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                                        <span className="quest-reward">+{q.reward} YP</span>
+                                        {q.completed && !q.claimed ? (
+                                            <button className="btn btn-primary btn-sm" onClick={() => claimQuest(q.id)} disabled={claimingQuest === q.id} style={{ fontSize: '0.72rem', padding: '4px 10px' }}>
+                                                {claimingQuest === q.id ? '...' : 'Claim'}
+                                            </button>
+                                        ) : q.claimed ? (
+                                            <span style={{ fontSize: '0.7rem', color: '#22c55e', fontWeight: 700 }}>Claimed</span>
+                                        ) : null}
+                                    </div>
+                                </div>
+                            ))}
+                            {quests.length === 0 && <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '20px' }}>Loading quests...</p>}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Library/Favorites */}
+            {tab === 'favorites' && (
+                <div>
+                    {loadingFavs ? (
+                        <div className="series-grid">{[...Array(4)].map((_, i) => <div key={i} className="skeleton" style={{ aspectRatio: '3/5' }} />)}</div>
+                    ) : favorites.length === 0 ? (
+                        <div className="admin-card" style={{ textAlign: 'center', padding: '40px 20px' }}>
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="1.5" style={{ marginBottom: 12 }}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>
+                            <p style={{ color: 'var(--text-muted)', marginBottom: 12 }}>Your library is empty</p>
+                            <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', marginBottom: 16 }}>Add series to your library by clicking the heart icon on any manga page.</p>
+                            <Link href="/series" className="btn btn-primary btn-sm">Browse Manga</Link>
+                        </div>
+                    ) : (
+                        <div className="series-grid">
+                            {favorites.map(s => <SeriesCard key={s.id} series={s} />)}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Settings */}
+            {tab === 'settings' && (
+                <div className="admin-card" style={{ maxWidth: 600 }}>
+                    <h3>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+                        Edit Profile
+                    </h3>
+                    <form onSubmit={handleProfileUpdate} style={{ marginTop: 24 }}>
+                        <div className="form-group">
+                            <label>Username</label>
+                            <input className="form-input" value={username} onChange={e => setUsername(e.target.value)} required minLength={3} />
+                        </div>
+                        <div className="form-group">
+                            <label>Email</label>
+                            <input type="email" className="form-input" value={email} onChange={e => setEmail(e.target.value)} required />
+                        </div>
+                        
+                        {/* Avatar 24 Limit UI */}
+                        <div className="form-group" style={{ 
+                            background: 'rgba(0,0,0,0.2)', 
+                            padding: '16px', 
+                            borderRadius: '8px',
+                            border: '1px solid var(--border-color)',
+                            marginTop: '24px' 
+                        }}>
+                            <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span>Avatar Image URL</span>
+                                {!avatarStatus.canUpdate && (
+                                    <span style={{ color: '#ef4444', fontSize: '0.8rem', fontWeight: 600 }}>
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: 4 }}><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+                                        Cooldown: {avatarStatus.remainingHours}h remaining
+                                    </span>
+                                )}
+                            </label>
+                            <small style={{ color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>
+                                To prevent abuse, profile pictures can only be changed once every 24 hours.
+                            </small>
+                            <input 
+                                type="url" 
+                                className="form-input" 
+                                placeholder="https://example.com/image.png"
+                                value={avatarUrl} 
+                                onChange={e => setAvatarUrl(e.target.value)} 
+                                disabled={!avatarStatus.canUpdate}
+                            />
+                        </div>
+
+                        <button type="submit" className="btn btn-primary" disabled={saving}>
+                            {saving ? 'Saving...' : 'Save Changes'}
+                        </button>
+                    </form>
+                </div>
+            )}
+
+            {/* Security */}
+            {tab === 'security' && (
+                <div className="admin-card" style={{ maxWidth: 500 }}>
+                    <h3>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+                        Change Password
+                    </h3>
+                    <form onSubmit={handlePasswordChange} style={{ marginTop: 16 }}>
+                        <div className="form-group">
+                            <label>Current Password</label>
+                            <input type="password" className="form-input" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} required />
+                        </div>
+                        <div className="form-group">
+                            <label>New Password</label>
+                            <input type="password" className="form-input" value={newPassword} onChange={e => setNewPassword(e.target.value)} required minLength={6} />
+                        </div>
+                        <div className="form-group">
+                            <label>Confirm New Password</label>
+                            <input type="password" className="form-input" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required minLength={6} />
+                        </div>
+                        <button type="submit" className="btn btn-danger" disabled={saving}>
+                            {saving ? 'Processing...' : 'Change Password'}
+                        </button>
+                    </form>
+                </div>
+            )}
+        </div>
+    );
+}
