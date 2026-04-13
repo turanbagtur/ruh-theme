@@ -275,6 +275,25 @@ export async function POST(request) {
             return NextResponse.json({ message: 'Series deleted' });
         }
 
+        if (action === 'delete-media') {
+            const filePath = formData.get('filePath');
+            if (!filePath) return NextResponse.json({ error: 'filePath required' }, { status: 400 });
+            // Security: only allow deleting from /uploads/ directory
+            if (!filePath.startsWith('/uploads/')) {
+                return NextResponse.json({ error: 'Invalid path' }, { status: 400 });
+            }
+            const fullPath = path.join(process.cwd(), 'public', filePath);
+            try {
+                if (fs.existsSync(fullPath)) {
+                    fs.unlinkSync(fullPath);
+                    return NextResponse.json({ message: 'File deleted' });
+                }
+                return NextResponse.json({ error: 'File not found' }, { status: 404 });
+            } catch (err) {
+                return NextResponse.json({ error: 'Failed to delete file' }, { status: 500 });
+            }
+        }
+
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
     } catch (error) {
         console.error('POST /api/admin error:', error);
@@ -288,6 +307,42 @@ export async function GET(request) {
         const db = getDb();
         const { searchParams } = new URL(request.url);
         const seriesId = searchParams.get('seriesId');
+        const action = searchParams.get('action');
+
+        // Media listing
+        if (action === 'list-media') {
+            const mediaFiles = [];
+            const uploadsBase = path.join(process.cwd(), 'public', 'uploads');
+            const scanDir = (dirPath, category) => {
+                if (!fs.existsSync(dirPath)) return;
+                try {
+                    for (const entry of fs.readdirSync(dirPath, { withFileTypes: true })) {
+                        const full = path.join(dirPath, entry.name);
+                        if (entry.isDirectory()) {
+                            scanDir(full, category);
+                        } else if (/\.(jpg|jpeg|png|gif|webp|svg)$/i.test(entry.name)) {
+                            try {
+                                const stat = fs.statSync(full);
+                                const relativePath = full.replace(path.join(process.cwd(), 'public'), '').replace(/\\/g, '/');
+                                mediaFiles.push({
+                                    name: entry.name,
+                                    path: relativePath,
+                                    category,
+                                    size: stat.size,
+                                    sizeFormatted: formatBytes(stat.size),
+                                    modified: stat.mtime.toISOString(),
+                                });
+                            } catch {}
+                        }
+                    }
+                } catch {}
+            };
+            scanDir(path.join(uploadsBase, 'covers'), 'covers');
+            scanDir(path.join(uploadsBase, 'avatars'), 'avatars');
+            scanDir(path.join(uploadsBase, 'pages'), 'pages');
+            mediaFiles.sort((a, b) => new Date(b.modified) - new Date(a.modified));
+            return NextResponse.json({ media: mediaFiles, total: mediaFiles.length });
+        }
 
         // If requesting a specific series detail for admin
         if (seriesId) {

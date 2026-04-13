@@ -320,6 +320,14 @@ server {
         access_log off;
     }
 
+    # Yüklenen görseller — Nginx doğrudan servis etsin
+    location /uploads/ {
+        alias /var/www/yomitranslate/public/uploads/;
+        expires 30d;
+        add_header Cache-Control "public";
+        access_log off;
+    }
+
     # Favicon
     location /favicon.ico {
         proxy_pass http://127.0.0.1:3000;
@@ -458,13 +466,32 @@ Kaydet ve çık.
 │   └── manga.db         ← SQLite veritabanı (yedekle!)
 ├── public/
 │   ├── uploads/
+│   │   ├── avatars/     ← Kullanıcı profil görselleri
 │   │   ├── covers/      ← Seri kapak görselleri
 │   │   └── pages/       ← Manga sayfaları
-│   └── translations/    ← Çevrilmiş sayfalar
-├── app/                 ← Sayfa ve API route'ları
+│   ├── translations/    ← Çevrilmiş sayfalar
+│   ├── robots.txt       ← SEO — arama motoru kuralları
+│   └── manifest.json    ← PWA manifest
+├── app/
+│   ├── sitemap.xml/     ← Dinamik sitemap (SEO)
+│   └── ...              ← Sayfa ve API route'ları
 ├── components/          ← React bileşenleri
 ├── lib/                 ← Veritabanı, auth, çeviri kütüphaneleri
 └── package.json
+```
+
+### Dosya İzinleri (Önemli!)
+Nginx ve Node.js'in dosyalara erişebilmesi için:
+```bash
+# Yükleme dizinleri oluştur
+mkdir -p /var/www/yomitranslate/public/uploads/{covers,pages,avatars}
+mkdir -p /var/www/yomitranslate/public/translations
+
+# İzinler
+chown -R www-data:www-data /var/www/yomitranslate/public/uploads
+chown -R www-data:www-data /var/www/yomitranslate/public/translations
+chmod -R 755 /var/www/yomitranslate/public/uploads
+chmod -R 755 /var/www/yomitranslate/public/translations
 ```
 
 ---

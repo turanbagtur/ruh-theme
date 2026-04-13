@@ -153,17 +153,17 @@ export default function RankingPage() {
             {/* Reward animation popup */}
             {rewardAnimation && (
                 <div style={{
-                    position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                    position: 'fixed', bottom: '40px', right: '20px',
                     background: 'rgba(0,0,0,0.92)', border: '2px solid var(--accent)',
-                    borderRadius: 20, padding: '36px 56px', zIndex: 1000,
-                    textAlign: 'center', animation: 'fadeInUp 0.4s ease',
+                    borderRadius: 16, padding: '24px 40px', zIndex: 1000,
+                    textAlign: 'center', animation: 'toastSlideIn 0.4s ease',
                     boxShadow: '0 20px 60px rgba(0,0,0,0.6)'
                 }}>
-                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12, color: '#f59e0b' }}>
+                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8, color: '#f59e0b' }}>
                         <GiftIcon />
                     </div>
-                    <div style={{ fontSize: '2.4rem', fontWeight: 900, color: 'var(--accent-light)', letterSpacing: 1 }}>{rewardAnimation}</div>
-                    <div style={{ color: 'var(--text-secondary)', marginTop: 8, fontSize: '0.9rem' }}>Daily Login Reward Claimed!</div>
+                    <div style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--accent-light)', letterSpacing: 1 }}>{rewardAnimation}</div>
+                    <div style={{ color: 'var(--text-secondary)', marginTop: 4, fontSize: '0.82rem' }}>Daily Login Reward Claimed!</div>
                 </div>
             )}
 

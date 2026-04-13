@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin-panel
+Disallow: /login
+Disallow: /register
+
+Sitemap: https://yomitranslate.com/sitemap.xml

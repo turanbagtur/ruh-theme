@@ -393,7 +393,7 @@ export default function ProfilePage() {
                             <input type="email" className="form-input" value={email} onChange={e => setEmail(e.target.value)} required />
                         </div>
                         
-                        {/* Avatar 24 Limit UI */}
+                        {/* Avatar Upload UI */}
                         <div className="form-group" style={{ 
                             background: 'rgba(0,0,0,0.2)', 
                             padding: '16px', 
@@ -402,7 +402,7 @@ export default function ProfilePage() {
                             marginTop: '24px' 
                         }}>
                             <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <span>Avatar Image URL</span>
+                                <span>Profile Picture</span>
                                 {!avatarStatus.canUpdate && (
                                     <span style={{ color: '#ef4444', fontSize: '0.8rem', fontWeight: 600 }}>
                                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: 4 }}><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
@@ -410,17 +410,94 @@ export default function ProfilePage() {
                                     </span>
                                 )}
                             </label>
-                            <small style={{ color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>
-                                To prevent abuse, profile pictures can only be changed once every 24 hours.
+                            <small style={{ color: 'var(--text-muted)', display: 'block', marginBottom: '12px' }}>
+                                To prevent abuse, profile pictures can only be changed once every 24 hours. Max 2MB.
                             </small>
-                            <input 
-                                type="url" 
-                                className="form-input" 
-                                placeholder="https://example.com/image.png"
-                                value={avatarUrl} 
-                                onChange={e => setAvatarUrl(e.target.value)} 
-                                disabled={!avatarStatus.canUpdate}
-                            />
+
+                            {/* Avatar Preview */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
+                                <div style={{ 
+                                    width: 64, height: 64, borderRadius: '50%', overflow: 'hidden', 
+                                    border: '2px solid var(--border-color)', flexShrink: 0,
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    background: 'var(--bg-tertiary)', fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)'
+                                }}>
+                                    {(user.avatar_url && user.avatar_url !== '/default-avatar.png') ? (
+                                        <img src={user.avatar_url} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    ) : (
+                                        user.username?.[0]?.toUpperCase() || '?'
+                                    )}
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: 4 }}>{user.username}</div>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                        {user.avatar_url && user.avatar_url !== '/default-avatar.png' ? 'Custom avatar set' : 'Using default avatar'}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* File Upload */}
+                            {avatarStatus.canUpdate && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                    <div style={{ display: 'flex', gap: 10, alignItems: 'stretch' }}>
+                                        <label style={{ 
+                                            flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                                            background: 'var(--bg-glass)', border: '1px dashed var(--border-color)', 
+                                            borderRadius: '8px', padding: '14px', cursor: 'pointer',
+                                            fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-secondary)',
+                                            transition: 'all 0.2s', marginBottom: 0
+                                        }}
+                                        onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.color = 'var(--accent-light)'; }}
+                                        onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-color)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
+                                        >
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                                            Upload from device
+                                            <input 
+                                                type="file" 
+                                                accept="image/jpeg,image/png,image/webp,image/gif" 
+                                                style={{ display: 'none' }}
+                                                onChange={async (e) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (!file) return;
+                                                    if (file.size > 2 * 1024 * 1024) {
+                                                        show('File too large. Maximum 2MB.', 'error');
+                                                        return;
+                                                    }
+                                                    setSaving(true);
+                                                    try {
+                                                        const formData = new FormData();
+                                                        formData.append('avatar', file);
+                                                        const res = await authFetch('/api/auth/profile/avatar', {
+                                                            method: 'POST',
+                                                            body: formData,
+                                                        });
+                                                        const data = await res.json();
+                                                        if (!res.ok) throw new Error(data.error);
+                                                        updateUser(data.user);
+                                                        show('Avatar updated successfully!');
+                                                        if (refreshUser) await refreshUser();
+                                                    } catch (err) { show(err.message, 'error'); }
+                                                    finally { setSaving(false); e.target.value = ''; }
+                                                }}
+                                            />
+                                        </label>
+                                    </div>
+                                    
+                                    {/* URL Input */}
+                                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                        <div style={{ flex: 1, height: 1, background: 'var(--border-color)' }} />
+                                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1 }}>or</span>
+                                        <div style={{ flex: 1, height: 1, background: 'var(--border-color)' }} />
+                                    </div>
+                                    <input 
+                                        type="url" 
+                                        className="form-input" 
+                                        placeholder="Paste image URL (https://...)"
+                                        value={avatarUrl} 
+                                        onChange={e => setAvatarUrl(e.target.value)} 
+                                    />
+                                </div>
+                            )}
                         </div>
 
                         <button type="submit" className="btn btn-primary" disabled={saving}>

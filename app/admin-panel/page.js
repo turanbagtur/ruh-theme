@@ -28,6 +28,7 @@ const NAVS = [
     { id: 'announcements', label: 'Announcements', icon: MegaphoneIcon },
     { id: 'overview', label: 'Dashboard', icon: DashIcon },
     { id: 'series', label: 'Series', icon: BookIcon },
+    { id: 'media', label: 'Media', icon: ImageIcon },
     { id: 'api-key', label: 'API Key', icon: KeyIcon },
     { id: 'users', label: 'Users', icon: UsersIcon },
     { id: 'comments', label: 'Comments', icon: MsgIcon },
@@ -45,6 +46,11 @@ export default function AdminPanelPage() {
     const [confirmModal, setConfirmModal] = useState(null);
     const [submitting, setSubmitting] = useState(false);
     const [previewImage, setPreviewImage] = useState(null); // { src, title }
+
+    // Media management
+    const [mediaFiles, setMediaFiles] = useState([]);
+    const [mediaLoading, setMediaLoading] = useState(false);
+    const [mediaFilter, setMediaFilter] = useState('all');
 
     // Announcements
     const [announcements, setAnnouncements] = useState([]);
@@ -840,6 +846,58 @@ export default function AdminPanelPage() {
                         </div>
                     </>
                 )}
+                {/* ═══════════════ MEDIA ═══════════════ */}
+                {tab === 'media' && (
+                    <>
+                        <h2 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}><ImageIcon /> Media Library</h2>
+                        <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+                            <button className="btn btn-primary btn-sm" onClick={async () => {
+                                setMediaLoading(true);
+                                try {
+                                    const res = await authFetch('/api/admin?action=list-media');
+                                    const data = await res.json();
+                                    setMediaFiles(data.media || []);
+                                } catch (err) { console.error(err); }
+                                finally { setMediaLoading(false); }
+                            }}>
+                                {mediaLoading ? 'Loading...' : 'Refresh'}
+                            </button>
+                            {['all', 'covers', 'pages', 'avatars'].map(f => (
+                                <button key={f} className={`btn btn-sm ${mediaFilter === f ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setMediaFilter(f)} style={{ textTransform: 'capitalize' }}>{f}</button>
+                            ))}
+                            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginLeft: 'auto' }}>
+                                {mediaFiles.filter(m => mediaFilter === 'all' || m.category === mediaFilter).length} files
+                            </span>
+                        </div>
+                        {mediaFiles.length === 0 && !mediaLoading ? (
+                            <div className="admin-card" style={{ textAlign: 'center', padding: 40 }}>
+                                <ImageIcon />
+                                <p style={{ color: 'var(--text-muted)', marginTop: 12 }}>Click &quot;Refresh&quot; to load media files.</p>
+                            </div>
+                        ) : (
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12 }}>
+                                {mediaFiles.filter(m => mediaFilter === 'all' || m.category === mediaFilter).map((m, i) => (
+                                    <div key={i} className="admin-card" style={{ padding: 0, overflow: 'hidden', position: 'relative' }}>
+                                        <div style={{ aspectRatio: '1', overflow: 'hidden', cursor: 'pointer', background: 'var(--bg-tertiary)' }} onClick={() => setPreviewImage({ src: m.path, title: m.name })}>
+                                            <img src={m.path} alt={m.name} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                        </div>
+                                        <div style={{ padding: '8px 10px' }}>
+                                            <div style={{ fontSize: '0.72rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.name}</div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+                                                <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>{m.sizeFormatted}</span>
+                                                <span style={{ fontSize: '0.62rem', padding: '1px 6px', borderRadius: 4, background: 'rgba(155,44,44,0.1)', color: 'var(--accent-light)' }}>{m.category}</span>
+                                            </div>
+                                            <button className="btn btn-danger btn-sm" style={{ width: '100%', marginTop: 6, fontSize: '0.7rem', padding: '4px 8px' }} onClick={() => setConfirmModal({ action: 'delete-media', body: { filePath: m.path }, text: `Delete "${m.name}"?` })}>
+                                                <TrashIcon /> Delete
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </>
+                )}
+
                 {/* ═══════════════ SETTINGS ═══════════════ */}
                 {tab === 'settings' && (
                     <div className="admin-card" style={{ maxWidth: 640 }}>

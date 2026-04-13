@@ -20,6 +20,7 @@ export default function SeriesDetailPage() {
     const [copied, setCopied] = useState(false);
     const [sortDesc, setSortDesc] = useState(true);
     const [dominantColor, setDominantColor] = useState(null);
+    const [descExpanded, setDescExpanded] = useState(false);
 
     useEffect(() => {
         async function fetchSeries() {
@@ -34,13 +35,19 @@ export default function SeriesDetailPage() {
         fetchSeries();
     }, [id]);
 
+    // Update page title for SEO
+    useEffect(() => {
+        if (series?.title) {
+            document.title = `${series.title} — YomiTranslate`;
+        }
+    }, [series?.title]);
+
     // Fetch related series
     useEffect(() => {
         async function fetchRelated() {
             try {
                 const res = await fetch('/api/series?sort=popular');
                 const data = await res.json();
-                // Filter by numeric id since series objects have id field
                 const others = (data.series || []).filter(s => String(s.slug || s.id) !== String(id));
                 setRelatedSeries(others.slice(0, 4));
             } catch { }
@@ -48,7 +55,6 @@ export default function SeriesDetailPage() {
         fetchRelated();
     }, [id]);
 
-    // Use numeric series.id for API calls (id param may be a slug)
     useEffect(() => {
         if (user && series?.id) checkFavorite(series.id);
     }, [user, series?.id]);
@@ -105,6 +111,9 @@ export default function SeriesDetailPage() {
         '--gradient-primary': palette.gradientPrimary
     } : {};
 
+    const descText = series.description || 'No synopsis available for this series.';
+    const isLongDesc = descText.length > 300;
+
     return (
         <div className="page-container fade-in" style={{ position: 'relative', ...adaptiveStyles }}>
             <div className="asura-series-backdrop" style={{ backgroundImage: `url(${series.cover_url || '/demo/cover1.jpg'})` }} />
@@ -144,7 +153,7 @@ export default function SeriesDetailPage() {
 
                 {/* Right Column - Info */}
                 <div style={{ zIndex: 1 }}>
-                    <h1 style={{ fontSize: '2.5rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '4px', letterSpacing: '-0.5px' }}>{series.title}</h1>
+                    <h1 style={{ fontSize: 'clamp(1.3rem, 4vw, 2.5rem)', fontWeight: 800, textTransform: 'uppercase', marginBottom: '4px', letterSpacing: '-0.5px' }}>{series.title}</h1>
                     <div style={{ color: 'var(--text-muted)', fontSize: '1.1rem', marginBottom: '16px' }}>{series.author} &middot; {series.artist}</div>
                     
                     <div className="asura-series-metadata">
@@ -167,9 +176,36 @@ export default function SeriesDetailPage() {
                         ))}
                     </div>
 
-                    <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6, fontSize: '0.95rem', background: 'var(--bg-card)', padding: '20px', borderRadius: '4px', borderLeft: '2px solid var(--border)', marginBottom: '24px' }}>
-                        {series.description || 'No synopsis available for this series.'}
-                    </p>
+                    <div style={{ position: 'relative', marginBottom: '24px' }}>
+                        <p style={{ 
+                            color: 'var(--text-secondary)', lineHeight: 1.6, fontSize: '0.95rem', 
+                            background: 'var(--bg-card)', padding: '20px', borderRadius: '4px', 
+                            borderLeft: '2px solid var(--border)', margin: 0,
+                            ...(isLongDesc && !descExpanded ? {
+                                display: '-webkit-box',
+                                WebkitLineClamp: 4,
+                                WebkitBoxOrient: 'vertical',
+                                overflow: 'hidden',
+                            } : {})
+                        }}>
+                            {descText}
+                        </p>
+                        {isLongDesc && (
+                            <button 
+                                onClick={() => setDescExpanded(!descExpanded)}
+                                style={{ 
+                                    background: 'none', border: 'none', color: 'var(--accent-light)', 
+                                    cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, 
+                                    padding: '8px 0', display: 'flex', alignItems: 'center', gap: 4
+                                }}
+                            >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d={descExpanded ? "m18 15-6-6-6 6" : "m6 9 6 6 6-6"} />
+                                </svg>
+                                {descExpanded ? 'Show Less' : 'Show More'}
+                            </button>
+                        )}
+                    </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                         <LanguageSelector selectedLang={selectedLang} onSelect={setSelectedLang} />
@@ -181,51 +217,51 @@ export default function SeriesDetailPage() {
                 </div>
             </div>
 
-                    {/* Chapter List */}
-                    <div style={{ marginTop: '24px' }}>
-                        <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-glass)', padding: '12px 16px', borderRadius: '4px', marginBottom: '16px' }}>
-                            <h2 className="section-title">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></svg>
-                                Chapters ({chapters.length})
-                            </h2>
-                            {chapters.length > 1 && (
-                                <button className="btn btn-ghost btn-sm" onClick={() => setSortDesc(!sortDesc)} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8rem' }}>
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                        <path d={sortDesc ? "M11 17l-4 4-4-4M7 21V3M21 3v18" : "M11 7l-4-4-4 4M7 3v18M21 21V3"} />
-                                    </svg>
-                                    Sort: {sortDesc ? 'Newest' : 'Oldest'}
-                                </button>
-                            )}
-                        </div>
-                        {chapters.length === 0 ? (
-                            <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-muted)', fontSize: '0.88rem' }}>
-                                No chapters available yet. Check back soon!
-                            </div>
-                        ) : (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                {[...chapters].sort((a, b) => sortDesc ? b.chapter_number - a.chapter_number : a.chapter_number - b.chapter_number).map(ch => (
-                                    <Link key={ch.id} href={`/read/${ch.id}${selectedLang ? `?lang=${selectedLang}` : ''}`} className="asura-chapter-row" style={{ padding: '12px 16px', borderRadius: '4px', background: 'var(--bg-card)', borderLeft: '3px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                                            <span style={{ fontWeight: 800, fontSize: '0.9rem' }}>Ch. {ch.chapter_number}</span>
-                                            {ch.title && ch.title !== `Chapter ${ch.chapter_number}` && (
-                                                <span style={{ color: 'var(--text-secondary)' }}>— {ch.title}</span>
-                                            )}
-                                        </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                            {ch.availableLanguages && ch.availableLanguages.length > 0 && (
-                                                <div style={{ display: 'flex', gap: 4 }}>
-                                                    {ch.availableLanguages.map(lang => (
-                                                        <span key={lang} className="chapter-lang-badge">{lang.toUpperCase()}</span>
-                                                    ))}
-                                                </div>
-                                            )}
-                                            <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{new Date(ch.created_at).toLocaleDateString()}</span>
-                                        </div>
-                                    </Link>
-                                ))}
-                            </div>
-                        )}
+            {/* Chapter List */}
+            <div style={{ marginTop: '24px' }}>
+                <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-glass)', padding: '12px 16px', borderRadius: '4px', marginBottom: '16px' }}>
+                    <h2 className="section-title">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></svg>
+                        Chapters ({chapters.length})
+                    </h2>
+                    {chapters.length > 1 && (
+                        <button className="btn btn-ghost btn-sm" onClick={() => setSortDesc(!sortDesc)} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8rem' }}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d={sortDesc ? "M11 17l-4 4-4-4M7 21V3M21 3v18" : "M11 7l-4-4-4 4M7 3v18M21 21V3"} />
+                            </svg>
+                            Sort: {sortDesc ? 'Newest' : 'Oldest'}
+                        </button>
+                    )}
+                </div>
+                {chapters.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-muted)', fontSize: '0.88rem' }}>
+                        No chapters available yet. Check back soon!
                     </div>
+                ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {[...chapters].sort((a, b) => sortDesc ? b.chapter_number - a.chapter_number : a.chapter_number - b.chapter_number).map(ch => (
+                            <Link key={ch.id} href={`/read/${ch.id}${selectedLang ? `?lang=${selectedLang}` : ''}`} className="asura-chapter-row" style={{ padding: '12px 16px', borderRadius: '4px', background: 'var(--bg-card)', borderLeft: '3px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                                    <span style={{ fontWeight: 800, fontSize: '0.9rem' }}>Ch. {ch.chapter_number}</span>
+                                    {ch.title && ch.title !== `Chapter ${ch.chapter_number}` && (
+                                        <span style={{ color: 'var(--text-secondary)' }}>— {ch.title}</span>
+                                    )}
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    {ch.availableLanguages && ch.availableLanguages.length > 0 && (
+                                        <div style={{ display: 'flex', gap: 4 }}>
+                                            {ch.availableLanguages.map(lang => (
+                                                <span key={lang} className="chapter-lang-badge">{lang.toUpperCase()}</span>
+                                            ))}
+                                        </div>
+                                    )}
+                                    <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{new Date(ch.created_at).toLocaleDateString()}</span>
+                                </div>
+                            </Link>
+                        ))}
+                    </div>
+                )}
+            </div>
 
             {/* Series Comments */}
             <div style={{ marginTop: 40, borderTop: '1px solid var(--border)', paddingTop: 32 }}>

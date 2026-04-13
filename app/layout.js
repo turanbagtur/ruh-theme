@@ -11,10 +11,45 @@ import jwt from 'jsonwebtoken';
 const MAINTENANCE_BYPASS = ['/login', '/api/'];
 
 export const metadata = {
-  title: 'YomiTranslate — AI-Powered Manga Translation',
-  description: 'Read manga in any language with AI-powered instant translation.',
-  keywords: 'manga, read manga online, manga translation, AI translation, yomitranslate, webtoon',
+  title: 'YomiTranslate — Read Manga Online with AI Translation',
+  description: 'Read manga in any language with AI-powered instant translation. Explore thousands of manga series translated with cutting-edge AI technology. Free, fast, and always up-to-date.',
+  keywords: 'manga, read manga online, manga translation, AI translation, yomitranslate, webtoon, manhwa, manhua, manga reader, online manga, free manga, manga chapters',
   manifest: '/manifest.json',
+  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'https://yomitranslate.com'),
+  openGraph: {
+    type: 'website',
+    locale: 'en_US',
+    url: '/',
+    siteName: 'YomiTranslate',
+    title: 'YomiTranslate — Read Manga Online with AI Translation',
+    description: 'Read manga in any language with AI-powered instant translation. Explore thousands of manga series translated with cutting-edge AI technology.',
+    images: [{
+      url: '/icon-512.png',
+      width: 512,
+      height: 512,
+      alt: 'YomiTranslate Logo',
+    }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'YomiTranslate — AI-Powered Manga Translation',
+    description: 'Read manga in any language with instant AI translation.',
+    images: ['/icon-512.png'],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
+  alternates: {
+    canonical: '/',
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
@@ -25,8 +60,8 @@ export const metadata = {
 export const viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  maximumScale: 5,
+  userScalable: true,
   themeColor: '#dc2626',
 };
 
@@ -61,7 +96,13 @@ function MaintenancePage() {
           }
           .logo { font-size: 3rem; margin-bottom: 12px; }
           .brand { font-size: 1.4rem; font-weight: 700; color: #a5b4fc; margin-bottom: 28px; }
-          .icon { font-size: 3.5rem; margin-bottom: 20px; }
+          .icon-wrapper {
+            width: 72px; height: 72px; margin: 0 auto 20px;
+            background: rgba(99,102,241,0.1); border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            animation: iconPulse 2s ease-in-out infinite;
+          }
+          .icon-wrapper svg { color: #818cf8; }
           h1 { font-size: 1.6rem; font-weight: 700; color: #f1f5f9; margin-bottom: 12px; }
           p { color: #94a3b8; font-size: 0.95rem; line-height: 1.7; margin-bottom: 28px; }
           .divider { height: 1px; background: rgba(99,102,241,0.15); margin: 24px 0; }
@@ -78,7 +119,14 @@ function MaintenancePage() {
             width: 8px; height: 8px; background: #f59e0b;
             border-radius: 50%; animation: pulse 1.5s ease-in-out infinite;
           }
+          .login-link {
+            display: inline-flex; align-items: center; gap: 6px;
+            color: #64748b; font-size: 0.78rem; margin-top: 16px;
+            text-decoration: none; transition: color 0.2s;
+          }
+          .login-link:hover { color: #a5b4fc; }
           @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+          @keyframes iconPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
         `}</style>
       </head>
       <body>
@@ -89,17 +137,25 @@ function MaintenancePage() {
             <span className="dot" />
             Under Maintenance
           </div>
-          <div className="icon">🔧</div>
-          <h1>We'll be back soon</h1>
+          <div className="icon-wrapper">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+            </svg>
+          </div>
+          <h1>We&apos;ll be back soon</h1>
           <p>
-            We're currently performing scheduled maintenance to improve your experience.
-            This won't take long — please check back shortly.
+            We&apos;re currently performing scheduled maintenance to improve your experience.
+            This won&apos;t take long — please check back shortly.
           </p>
           <div className="divider" />
           <div className="contact">
             Questions? Contact us at{' '}
-            <a href="mailto:yomitranslate@gmail.com">yomitranslate@gmail.com</a>
+            <a href="mailto:yomiitranslate@gmail.com">yomiitranslate@gmail.com</a>
           </div>
+          <a href="/login" className="login-link">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+            Admin Login
+          </a>
         </div>
       </body>
     </html>
@@ -186,7 +242,7 @@ export default async function RootLayout({ children }) {
             <div className="footer-disclaimer">
               YomiTranslate is a fan-driven platform. All manga titles, artwork, and characters belong to their respective creators and publishers.
               Content is provided for educational and entertainment purposes only. If you are a copyright holder and believe your work has been used without permission,
-              please contact us at <a href="mailto:yomitranslate@gmail.com" style={{color: 'var(--primary)'}}>yomitranslate@gmail.com</a> for prompt removal.
+              please contact us at <a href="mailto:yomiitranslate@gmail.com" style={{color: 'var(--primary)'}}>yomiitranslate@gmail.com</a> for prompt removal.
             </div>
           </footer>
         </AuthProvider>
