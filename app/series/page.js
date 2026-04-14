@@ -13,11 +13,12 @@ function SeriesContent() {
     const [selectedGenres, setSelectedGenres] = useState([]);
     const [sortBy, setSortBy] = useState(searchParams.get('sort') || 'latest');
     const [statusFilter, setStatusFilter] = useState('');
+    const [typeFilter, setTypeFilter] = useState('');
     const [viewMode, setViewMode] = useState('grid');
 
     useEffect(() => {
         fetchSeries();
-    }, [selectedGenres, sortBy, statusFilter]);
+    }, [selectedGenres, sortBy, statusFilter, typeFilter]);
 
     async function fetchSeries() {
         setLoading(true);
@@ -27,6 +28,7 @@ function SeriesContent() {
             if (selectedGenres.length > 0) params.set('genre', selectedGenres.join(','));
             if (sortBy) params.set('sort', sortBy);
             if (statusFilter) params.set('status', statusFilter);
+            if (typeFilter) params.set('type', typeFilter);
             const res = await fetch(`/api/series?${params.toString()}`);
             const data = await res.json();
             let filteredSeries = data.series || [];
@@ -62,10 +64,11 @@ function SeriesContent() {
         setSearch('');
         setSelectedGenres([]);
         setStatusFilter('');
+        setTypeFilter('');
         setSortBy('latest');
     }
 
-    const hasFilters = search || selectedGenres.length > 0 || statusFilter;
+    const hasFilters = search || selectedGenres.length > 0 || statusFilter || typeFilter;
 
     return (
         <div className="page-container page-section fade-in">
@@ -91,6 +94,13 @@ function SeriesContent() {
                         style={{ flex: 1, minWidth: 200 }}
                     />
                 </form>
+                <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
+                    <option value="">All Types</option>
+                    <option value="manga">Manga</option>
+                    <option value="manhwa">Manhwa</option>
+                    <option value="manhua">Manhua</option>
+                    <option value="comic">Comic</option>
+                </select>
                 <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
                     <option value="">All Status</option>
                     <option value="ongoing">Ongoing</option>

@@ -70,6 +70,7 @@ export async function POST(request) {
             const author = formData.get('author') || '';
             const artist = formData.get('artist') || '';
             const status = formData.get('status') || 'ongoing';
+            const type = formData.get('type') || 'manga';
             const genres = formData.get('genres') || '[]';
             const rating = parseFloat(formData.get('rating')) || 0;
             const published = parseInt(formData.get('published')) || 0;
@@ -88,8 +89,8 @@ export async function POST(request) {
 
             const slug = makeUniqueSlug(db, title);
             const result = db.prepare(
-                'INSERT INTO series (title, slug, description, cover_url, author, artist, status, genres, rating, published) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-            ).run(title, slug, description, coverUrl, author, artist, status, genres, rating, published);
+                'INSERT INTO series (title, slug, description, cover_url, author, artist, status, type, genres, rating, published) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            ).run(title, slug, description, coverUrl, author, artist, status, type, genres, rating, published);
 
             return NextResponse.json({ seriesId: result.lastInsertRowid, slug, message: published ? 'Series published!' : 'Series saved as draft' }, { status: 201 });
         }
@@ -102,6 +103,7 @@ export async function POST(request) {
             const author = formData.get('author') || '';
             const artist = formData.get('artist') || '';
             const status = formData.get('status') || 'ongoing';
+            const type = formData.get('type') || 'manga';
             const genres = formData.get('genres') || '[]';
             const rating = parseFloat(formData.get('rating')) || 0;
             const published = parseInt(formData.get('published')) || 0;
@@ -126,11 +128,11 @@ export async function POST(request) {
             }
 
             if (coverUrl) {
-                db.prepare('UPDATE series SET title=?, slug=?, description=?, cover_url=?, author=?, artist=?, status=?, genres=?, rating=?, published=? WHERE id=?')
-                    .run(title, slug, description, coverUrl, author, artist, status, genres, rating, published, seriesId);
+                db.prepare('UPDATE series SET title=?, slug=?, description=?, cover_url=?, author=?, artist=?, status=?, type=?, genres=?, rating=?, published=? WHERE id=?')
+                    .run(title, slug, description, coverUrl, author, artist, status, type, genres, rating, published, seriesId);
             } else {
-                db.prepare('UPDATE series SET title=?, slug=?, description=?, author=?, artist=?, status=?, genres=?, rating=?, published=? WHERE id=?')
-                    .run(title, slug, description, author, artist, status, genres, rating, published, seriesId);
+                db.prepare('UPDATE series SET title=?, slug=?, description=?, author=?, artist=?, status=?, type=?, genres=?, rating=?, published=? WHERE id=?')
+                    .run(title, slug, description, author, artist, status, type, genres, rating, published, seriesId);
             }
 
             return NextResponse.json({ message: 'Series updated', slug });

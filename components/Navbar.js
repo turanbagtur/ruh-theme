@@ -80,7 +80,9 @@ export default function Navbar() {
     };
 
     function timeAgo(d) {
-        const m = Math.floor((Date.now() - new Date(d).getTime()) / 60000);
+        if (!d) return '';
+        const utcStr = typeof d === 'string' && !d.endsWith('Z') ? d + 'Z' : d;
+        const m = Math.floor((Date.now() - new Date(utcStr).getTime()) / 60000);
         if (m < 60) return `${Math.max(1,m)}m ago`;
         const h = Math.floor(m / 60);
         if (h < 24) return `${h}h ago`;

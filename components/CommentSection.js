@@ -226,7 +226,15 @@ export default function CommentSection({ chapterId, seriesId }) {
         showToast('Report submitted. Thank you.');
     }
 
-    function timeAgo(d) { const m = Math.floor((Date.now() - new Date(d).getTime()) / 60000); if (m < 60) return `${Math.max(1,m)}m ago`; const h = Math.floor(m / 60); if (h < 24) return `${h}h ago`; return `${Math.floor(h / 24)}d ago`; }
+    function timeAgo(d) {
+        if (!d) return '';
+        const utcStr = typeof d === 'string' && !d.endsWith('Z') ? d + 'Z' : d;
+        const m = Math.floor((Date.now() - new Date(utcStr).getTime()) / 60000); 
+        if (m < 60) return `${Math.max(1,m)}m ago`; 
+        const h = Math.floor(m / 60); 
+        if (h < 24) return `${h}h ago`; 
+        return `${Math.floor(h / 24)}d ago`; 
+    }
     function getCount(c, emoji) { const r = (c.reactions || []).find(x => x.emoji === emoji); return r ? r.count : 0; }
     function isActive(c, emoji) { const r = (c.reactions || []).find(x => x.emoji === emoji); return r && user && r.user_ids?.split(',').includes(String(user.id)); }
 

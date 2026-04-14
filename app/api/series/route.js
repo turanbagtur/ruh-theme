@@ -10,6 +10,7 @@ export async function GET(request) {
         const search = searchParams.get('search') || '';
         const genre = searchParams.get('genre') || '';
         const status = searchParams.get('status') || '';
+        const type = searchParams.get('type') || '';
         const sort = searchParams.get('sort') || 'latest';
         const limit = parseInt(searchParams.get('limit')) || 0;
 
@@ -35,6 +36,11 @@ export async function GET(request) {
         if (status) {
             query += ' AND s.status = ?';
             params.push(status);
+        }
+
+        if (type) {
+            query += ' AND s.type = ?';
+            params.push(type);
         }
 
         query += ' GROUP BY s.id';

@@ -69,6 +69,7 @@ export default function AdminPanelPage() {
     const [sAuthor, setSAuthor] = useState('');
     const [sArtist, setSArtist] = useState('');
     const [sStatus, setSStatus] = useState('ongoing');
+    const [sType, setSType] = useState('manga');
     const [sGenres, setSGenres] = useState('');
     const [sCover, setSCover] = useState(null);
     const [sCoverPreview, setSCoverPreview] = useState('');
@@ -81,6 +82,11 @@ export default function AdminPanelPage() {
     // Upload pages
     const [uploadChapterId, setUploadChapterId] = useState(null);
     const [uFiles, setUFiles] = useState(null);
+    
+    // Bulk chapter upload
+    const [bulkFiles, setBulkFiles] = useState(null);
+    const [bulkStatus, setBulkStatus] = useState('');
+
     // View pages panel
     const [viewPagesChapterId, setViewPagesChapterId] = useState(null);
     const [viewPages, setViewPages] = useState([]);
@@ -227,12 +233,12 @@ export default function AdminPanelPage() {
 
     function populateForm(s) {
         setSTitle(s.title); setSDesc(s.description || ''); setSAuthor(s.author || ''); setSArtist(s.artist || '');
-        setSStatus(s.status || 'ongoing'); setSGenres(tryParseGenres(s.genres)); setSRating(String(s.rating || 0));
+        setSStatus(s.status || 'ongoing'); setSType(s.type || 'manga'); setSGenres(tryParseGenres(s.genres)); setSRating(String(s.rating || 0));
         setSCover(null); setSCoverPreview(s.cover_url || '');
     }
 
     function resetForm() {
-        setSTitle(''); setSDesc(''); setSAuthor(''); setSArtist(''); setSStatus('ongoing');
+        setSTitle(''); setSDesc(''); setSAuthor(''); setSArtist(''); setSStatus('ongoing'); setSType('manga');
         setSGenres(''); setSRating('0'); setSCover(null); setSCoverPreview('');
     }
 
@@ -251,6 +257,7 @@ export default function AdminPanelPage() {
             const fd = new FormData(); fd.append('action', 'add-series');
             fd.append('title', sTitle); fd.append('description', sDesc); fd.append('author', sAuthor);
             fd.append('artist', sArtist); fd.append('status', sStatus); fd.append('rating', sRating);
+            fd.append('type', sType);
             fd.append('genres', JSON.stringify(sGenres.split(',').map(g => g.trim()).filter(Boolean)));
             fd.append('published', published ? '1' : '0');
             if (sCover) fd.append('cover', sCover);
@@ -269,6 +276,7 @@ export default function AdminPanelPage() {
             const fd = new FormData(); fd.append('action', 'update-series');
             fd.append('seriesId', detailSeries.id); fd.append('title', sTitle); fd.append('description', sDesc);
             fd.append('author', sAuthor); fd.append('artist', sArtist); fd.append('status', sStatus);
+            fd.append('type', sType);
             fd.append('rating', sRating); fd.append('published', published !== undefined ? (published ? '1' : '0') : String(detailSeries.published));
             fd.append('genres', JSON.stringify(sGenres.split(',').map(g => g.trim()).filter(Boolean)));
             if (sCover) fd.append('cover', sCover);
@@ -277,6 +285,76 @@ export default function AdminPanelPage() {
             show(d.message); fetchStats(); openSeriesDetail(detailSeries.id);
         } catch (e) { show(e.message, 'error'); }
         finally { setSubmitting(false); }
+    }
+
+    async function handleBulkUpload(e) {
+        e.preventDefault();
+        if (!bulkFiles || !bulkFiles.length) return show('Select a folder first', 'error');
+        if (!window.confirm(`Found ${bulkFiles.length} files. Group into chapters and upload?`)) return;
+
+        setSubmitting(true);
+        setBulkStatus('Analyzing files...');
+
+        try {
+            const chapterGroups = {};
+            for(let i=0; i<bulkFiles.length; i++) {
+                const f = bulkFiles[i];
+                const pathParts = f.webkitRelativePath.split('/');
+                if(pathParts.length < 3) continue; // Must be inside a chapter folder e.g. Parent/Chap/Img
+                const chapFolderName = pathParts[pathParts.length - 2]; 
+                if(!chapterGroups[chapFolderName]) chapterGroups[chapFolderName] = [];
+                chapterGroups[chapFolderName].push(f);
+            }
+
+            const folders = Object.keys(chapterGroups);
+            if(folders.length === 0) throw new Error('No valid chapter folders found. Make sure you select a parent folder that contains chapter folders (e.g. Manga/Chapter 1/img.jpg)');
+
+            // Sort folders naturally
+            folders.sort((a,b) => a.localeCompare(b, undefined, {numeric: true, sensitivity: 'base'}));
+
+            let successCount = 0;
+            for(let i=0; i<folders.length; i++) {
+                const folderName = folders[i];
+                const files = chapterGroups[folderName];
+                
+                const numMatch = folderName.match(/(\d+(\.\d+)?)/);
+                const chapNum = numMatch ? parseFloat(numMatch[1]) : (i + 1);
+
+                setBulkStatus(`Uploading Ch ${chapNum} (${i+1}/${folders.length})...`);
+
+                const r1 = await doAction('add-chapter', { seriesId: detailSeries.id, chapterNumber: chapNum, title: folderName });
+                if(!r1.message?.includes('added')) throw new Error(`Failed to create chapter ${chapNum}`);
+                
+                const r2 = await authFetch(`/api/admin?seriesId=${detailSeries.id}`);
+                const d2 = await r2.json();
+                const newChapId = d2.chapters.find(c => c.chapter_number == chapNum)?.id;
+                
+                if(!newChapId) throw new Error(`Could not locate created chapter ${chapNum}`);
+
+                const fd = new FormData(); 
+                fd.append('action', 'upload-pages'); 
+                fd.append('chapterId', newChapId);
+                for(const f of files) fd.append('pages', f);
+
+                const r3 = await fetch('/api/admin', { method: 'POST', body: fd, headers: authHeaders() });
+                if(!r3.ok) throw new Error(`Failed to upload images for Chapter ${chapNum}`);
+                
+                successCount++;
+            }
+
+            show(`Bulk upload complete! ${successCount} chapters added.`);
+            setBulkFiles(null);
+            setBulkStatus('');
+            openSeriesDetail(detailSeries.id); fetchStats();
+        } catch(e) {
+            show(e.message, 'error');
+            setBulkStatus('Error. Check console.');
+            setTimeout(() => setBulkStatus(''), 3000);
+            openSeriesDetail(detailSeries.id); fetchStats();
+        } finally {
+            setSubmitting(false);
+            if (document.getElementById('bulk-folder-input')) document.getElementById('bulk-folder-input').value = "";
+        }
     }
 
     async function handleAddChapter() {
@@ -593,6 +671,31 @@ export default function AdminPanelPage() {
                                     style={{ height: 38, whiteSpace: 'nowrap' }}>
                                     <PlusIcon /> Add
                                 </button>
+                            </div>
+                            
+                            {/* Bulk Upload Section */}
+                            <div style={{ padding: 12, background: 'var(--bg-tertiary)', borderRadius: 8, marginBottom: 16, border: '1px dashed var(--border)' }}>
+                                <h4 style={{ margin: '0 0 8px 0', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <UploadIcon /> Bulk Upload Chapters
+                                </h4>
+                                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 12 }}>
+                                    Select a parent folder containing subfolders for each chapter (e.g. MangaFolder / Chapter 1 / 01.jpg). 
+                                </p>
+                                <form onSubmit={handleBulkUpload} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                                    <input 
+                                        type="file" 
+                                        id="bulk-folder-input"
+                                        webkitdirectory="true" 
+                                        directory="true" 
+                                        multiple 
+                                        onChange={e => setBulkFiles(e.target.files)} 
+                                        style={{ fontSize: '0.75rem', maxWidth: '300px' }}
+                                    />
+                                    <button type="submit" className="btn btn-primary btn-sm" disabled={submitting || !bulkFiles}>
+                                        {submitting ? 'Uploading...' : 'Bulk Upload'}
+                                    </button>
+                                    {bulkStatus && <span style={{ fontSize: '0.75rem', color: 'var(--accent-light)' }}>{bulkStatus}</span>}
+                                </form>
                             </div>
 
                             {detailChapters.length === 0 ? (
@@ -1068,7 +1171,7 @@ export default function AdminPanelPage() {
                     <label>Genres (comma separated)</label>
                     <input className="form-input" placeholder="Action, Fantasy, Drama" value={sGenres} onChange={e => setSGenres(e.target.value)} />
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
                     <div className="form-group">
                         <label>Status</label>
                         <select className="form-input" value={sStatus} onChange={e => setSStatus(e.target.value)}>
@@ -1076,6 +1179,15 @@ export default function AdminPanelPage() {
                             <option value="completed">Completed</option>
                             <option value="hiatus">Hiatus</option>
                             <option value="cancelled">Cancelled</option>
+                        </select>
+                    </div>
+                    <div className="form-group">
+                        <label>Type</label>
+                        <select className="form-input" value={sType} onChange={e => setSType(e.target.value)}>
+                            <option value="manga">Manga</option>
+                            <option value="manhwa">Manhwa</option>
+                            <option value="manhua">Manhua</option>
+                            <option value="comic">Comic</option>
                         </select>
                     </div>
                     <div className="form-group">
