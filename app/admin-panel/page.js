@@ -327,13 +327,18 @@ export default function AdminPanelPage() {
                 
                 if(!newChapId) throw new Error(`Could not create chapter ${chapNum}`);
 
-                const fd = new FormData(); 
-                fd.append('action', 'upload-pages'); 
-                fd.append('chapterId', newChapId);
-                for(const f of files) fd.append('pages', f);
+                // Upload chunks of 10 images at a time
+                const chunkSize = 10;
+                for (let k = 0; k < files.length; k += chunkSize) {
+                    const chunkFiles = files.slice(k, k + chunkSize);
+                    const fd = new FormData(); 
+                    fd.append('action', 'upload-pages'); 
+                    fd.append('chapterId', newChapId);
+                    for(const f of chunkFiles) fd.append('pages', f);
 
-                const r3 = await fetch('/api/admin', { method: 'POST', body: fd, headers: authHeaders() });
-                if(!r3.ok) throw new Error(`Failed to upload images for Chapter ${chapNum}`);
+                    const r3 = await fetch('/api/admin', { method: 'POST', body: fd, headers: authHeaders() });
+                    if(!r3.ok) throw new Error(`Failed to upload images for Chapter ${chapNum} (Chunk ${k/chunkSize + 1})`);
+                }
                 
                 successCount++;
             }
@@ -651,6 +656,15 @@ export default function AdminPanelPage() {
                         <div className="admin-card">
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                                 <h3 style={{ margin: 0 }}>Chapters ({detailChapters.length})</h3>
+                                {detailChapters.length > 0 && (
+                                    <button className="btn btn-danger btn-sm" onClick={() => setConfirmModal({
+                                        action: 'delete-all-chapters', body: { seriesId: detailSeries.id },
+                                        text: `Delete ALL ${detailChapters.length} chapters and their pages? THIS IS IRREVERSIBLE!`,
+                                        onDone: () => openSeriesDetail(detailSeries.id)
+                                    })}>
+                                        <TrashIcon /> Delete All
+                                    </button>
+                                )}
                             </div>
 
                             {/* Add chapter inline */}

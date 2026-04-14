@@ -165,6 +165,23 @@ export async function POST(request) {
             return NextResponse.json({ message: 'Chapter deleted' });
         }
 
+        if (action === 'delete-all-chapters') {
+            const db = getDb();
+            const seriesId = formData.get('seriesId');
+            const chapters = db.prepare('SELECT id FROM chapters WHERE series_id = ?').all(seriesId);
+            for (const ch of chapters) {
+                const pages = db.prepare('SELECT image_path FROM pages WHERE chapter_id = ?').all(ch.id);
+                for (const p of pages) {
+                    const filePath = path.join(process.cwd(), 'public', p.image_path);
+                    try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch { }
+                }
+                const chapterDir = path.join(process.cwd(), 'public', 'uploads', 'pages', ch.id.toString());
+                try { if (fs.existsSync(chapterDir)) fs.rmSync(chapterDir, { recursive: true, force: true }); } catch { }
+            }
+            db.prepare('DELETE FROM chapters WHERE series_id = ?').run(seriesId);
+            return NextResponse.json({ message: `Deleted all ${chapters.length} chapters successfully` });
+        }
+
         if (action === 'upload-pages') {
             const db = getDb();
             const chapterId = formData.get('chapterId');
