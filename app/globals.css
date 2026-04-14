@@ -293,6 +293,14 @@ select {
   flex-shrink: 0;
 }
 
+/* Show on mobile only */
+.mobile-only-item { display: none; }
+
+@media (max-width: 768px) {
+  .mobile-only-item { display: flex; }
+  .desktop-only-item { display: none; }
+}
+
 /* Search */
 .search-overlay {
   position: absolute;
@@ -2435,6 +2443,10 @@ select {
 }
 
 @media (max-width: 768px) {
+  .main-layout {
+    grid-template-columns: 1fr;
+  }
+
   .navbar-links {
     display: none;
   }

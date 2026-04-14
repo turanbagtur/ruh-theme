@@ -160,11 +160,25 @@ export default function Navbar() {
                                             <strong>{user.username}</strong>
                                             <span>{user.email}</span>
                                         </div>
+                                        {/* Mobile-only nav links */}
+                                        <Link href="/" className="dropdown-item mobile-only-item">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                                            Home
+                                        </Link>
+                                        <Link href="/series" className="dropdown-item mobile-only-item">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                                            Browse
+                                        </Link>
+                                        <Link href="/ranking" className="dropdown-item mobile-only-item">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                                            Ranking
+                                        </Link>
+                                        <div style={{ height: 1, background: 'var(--border-color)', margin: '4px 0' }} />
                                         <Link href="/profile" className="dropdown-item">
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
                                             Profile
                                         </Link>
-                                        <Link href="/ranking" className="dropdown-item">
+                                        <Link href="/ranking" className="dropdown-item desktop-only-item">
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
                                             Leaderboard
                                         </Link>

@@ -108,7 +108,7 @@ export default function AdminPanelPage() {
     const [turnstileLoaded, setTurnstileLoaded] = useState(false);
 
     // Global Settings (Donations + Maintenance)
-    const [settings, setSettings] = useState({ donation_enabled: '0', donation_text: '', paypal_url: '', kofi_url: '', maintenance_mode: '0' });
+    const [settings, setSettings] = useState({ donation_enabled: '0', donation_text: '', paypal_url: '', kofi_url: '', maintenance_mode: '0', maintenance_message: '' });
 
     useEffect(() => {
         if (authLoading) return;
@@ -135,6 +135,7 @@ export default function AdminPanelPage() {
                       paypal_url: sData.settings.paypal_url || '',
                       kofi_url: sData.settings.kofi_url || '',
                       maintenance_mode: sData.settings.maintenance_mode || '0',
+                      maintenance_message: sData.settings.maintenance_message || '',
                  });
                  setTurnstileSiteKey(sData.settings.turnstile_site_key || '');
                  // We never pre-fill the secret key for security
@@ -928,6 +929,18 @@ export default function AdminPanelPage() {
                                     <label htmlFor="maintenanceEnabled" style={{ marginBottom: 0, fontWeight: 500, cursor: 'pointer' }}>
                                         Enable Maintenance Mode
                                     </label>
+                                </div>
+                                <div className="form-group" style={{ marginTop: 14 }}>
+                                    <label>Maintenance Message (optional)</label>
+                                    <textarea
+                                        className="form-input"
+                                        rows={3}
+                                        value={settings.maintenance_message}
+                                        onChange={(e) => setSettings({ ...settings, maintenance_message: e.target.value })}
+                                        placeholder="We're currently performing scheduled maintenance to improve your experience. This won't take long — please check back shortly."
+                                        style={{ resize: 'vertical', minHeight: 70 }}
+                                    />
+                                    <small style={{ color: 'var(--text-muted)', marginTop: 4 }}>Leave empty for default message.</small>
                                 </div>
                             </div>
 

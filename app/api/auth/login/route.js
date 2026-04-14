@@ -52,6 +52,14 @@ export async function POST(request) {
             avatar_url: user.avatar_url,
         };
 
+        // Block non-admin users during maintenance mode
+        try {
+            const maintenanceRow = db.prepare("SELECT setting_value FROM app_settings WHERE setting_key = 'maintenance_mode'").get();
+            if (maintenanceRow?.setting_value === '1' && user.role !== 'admin') {
+                return NextResponse.json({ error: 'Site is under maintenance. Only administrators can log in.' }, { status: 403 });
+            }
+        } catch {}
+
         const response = NextResponse.json({ user: userData, token });
         // Set httpOnly cookie so server components (layout) can read role for maintenance mode
         response.cookies.set('yomi_token', token, {

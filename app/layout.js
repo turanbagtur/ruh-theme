@@ -65,7 +65,8 @@ export const viewport = {
   themeColor: '#dc2626',
 };
 
-function MaintenancePage() {
+function MaintenancePage({ message }) {
+  const displayMessage = message || "We're currently performing scheduled maintenance to improve your experience. This won't take long — please check back shortly.";
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -143,10 +144,7 @@ function MaintenancePage() {
             </svg>
           </div>
           <h1>We&apos;ll be back soon</h1>
-          <p>
-            We&apos;re currently performing scheduled maintenance to improve your experience.
-            This won&apos;t take long — please check back shortly.
-          </p>
+          <p>{displayMessage}</p>
           <div className="divider" />
           <div className="contact">
             Questions? Contact us at{' '}
@@ -184,6 +182,16 @@ function isMaintenanceModeOn() {
   }
 }
 
+function getMaintenanceMessage() {
+  try {
+    const db = getDb();
+    const row = db.prepare("SELECT setting_value FROM app_settings WHERE setting_key = 'maintenance_message'").get();
+    return row?.setting_value || '';
+  } catch {
+    return '';
+  }
+}
+
 export default async function RootLayout({ children }) {
   const cookieStore = await cookies();
   const headerStore = await headers();
@@ -196,7 +204,8 @@ export default async function RootLayout({ children }) {
 
   // Show maintenance page to non-admins when maintenance mode is on
   if (maintenance && !isAdmin && !isBypassed) {
-    return <MaintenancePage />;
+    const msg = getMaintenanceMessage();
+    return <MaintenancePage message={msg} />;
   }
 
   return (
