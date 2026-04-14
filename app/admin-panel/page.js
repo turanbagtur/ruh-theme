@@ -300,14 +300,14 @@ export default function AdminPanelPage() {
             for(let i=0; i<bulkFiles.length; i++) {
                 const f = bulkFiles[i];
                 const pathParts = f.webkitRelativePath.split('/');
-                if(pathParts.length < 3) continue; // Must be inside a chapter folder e.g. Parent/Chap/Img
+                if(pathParts.length < 2) continue; // Must be inside some folder e.g. Chapter 1/page.jpg
                 const chapFolderName = pathParts[pathParts.length - 2]; 
                 if(!chapterGroups[chapFolderName]) chapterGroups[chapFolderName] = [];
                 chapterGroups[chapFolderName].push(f);
             }
 
             const folders = Object.keys(chapterGroups);
-            if(folders.length === 0) throw new Error('No valid chapter folders found. Make sure you select a parent folder that contains chapter folders (e.g. Manga/Chapter 1/img.jpg)');
+            if(folders.length === 0) throw new Error('No valid chapter folders found. Make sure you select a folder containing chapter folders (e.g. Manga/Chapter 1/img.jpg or Chapter 1/img.jpg)');
 
             // Sort folders naturally
             folders.sort((a,b) => a.localeCompare(b, undefined, {numeric: true, sensitivity: 'base'}));
@@ -323,13 +323,9 @@ export default function AdminPanelPage() {
                 setBulkStatus(`Uploading Ch ${chapNum} (${i+1}/${folders.length})...`);
 
                 const r1 = await doAction('add-chapter', { seriesId: detailSeries.id, chapterNumber: chapNum, title: folderName });
-                if(!r1.message?.includes('added')) throw new Error(`Failed to create chapter ${chapNum}`);
+                const newChapId = r1.chapterId;
                 
-                const r2 = await authFetch(`/api/admin?seriesId=${detailSeries.id}`);
-                const d2 = await r2.json();
-                const newChapId = d2.chapters.find(c => c.chapter_number == chapNum)?.id;
-                
-                if(!newChapId) throw new Error(`Could not locate created chapter ${chapNum}`);
+                if(!newChapId) throw new Error(`Could not create chapter ${chapNum}`);
 
                 const fd = new FormData(); 
                 fd.append('action', 'upload-pages'); 
@@ -685,8 +681,7 @@ export default function AdminPanelPage() {
                                     <input 
                                         type="file" 
                                         id="bulk-folder-input"
-                                        webkitdirectory="true" 
-                                        directory="true" 
+                                        webkitdirectory="" 
                                         multiple 
                                         onChange={e => setBulkFiles(e.target.files)} 
                                         style={{ fontSize: '0.75rem', maxWidth: '300px' }}
