@@ -287,18 +287,24 @@ export default function AdminPanelPage() {
         finally { setSubmitting(false); }
     }
 
+    const [selectedChapters, setSelectedChapters] = useState([]);
+
     async function handleBulkUpload(e) {
         e.preventDefault();
         if (!bulkFiles || !bulkFiles.length) return show('Select a folder first', 'error');
-        if (!window.confirm(`Found ${bulkFiles.length} files. Group into chapters and upload?`)) return;
+
+        // Filter for images only
+        const imageFiles = Array.from(bulkFiles).filter(f => f.type.startsWith('image/'));
+        if (imageFiles.length === 0) return show('No images found in the selected folder.', 'error');
+        if (!window.confirm(`Found ${imageFiles.length} image files. Group into chapters and upload?`)) return;
 
         setSubmitting(true);
         setBulkStatus('Analyzing files...');
 
         try {
             const chapterGroups = {};
-            for(let i=0; i<bulkFiles.length; i++) {
-                const f = bulkFiles[i];
+            for(let i=0; i<imageFiles.length; i++) {
+                const f = imageFiles[i];
                 const pathParts = f.webkitRelativePath.split('/');
                 if(pathParts.length < 2) continue; // Must be inside some folder e.g. Chapter 1/page.jpg
                 const chapFolderName = pathParts[pathParts.length - 2]; 
@@ -327,8 +333,8 @@ export default function AdminPanelPage() {
                 
                 if(!newChapId) throw new Error(`Could not create chapter ${chapNum}`);
 
-                // Upload chunks of 10 images at a time
-                const chunkSize = 10;
+                // Upload chunks of 3 images at a time to prevent Vercel/NextJS Payload sizes timeouts
+                const chunkSize = 3;
                 for (let k = 0; k < files.length; k += chunkSize) {
                     const chunkFiles = files.slice(k, k + chunkSize);
                     const fd = new FormData(); 
@@ -656,15 +662,27 @@ export default function AdminPanelPage() {
                         <div className="admin-card">
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                                 <h3 style={{ margin: 0 }}>Chapters ({detailChapters.length})</h3>
-                                {detailChapters.length > 0 && (
-                                    <button className="btn btn-danger btn-sm" onClick={() => setConfirmModal({
-                                        action: 'delete-all-chapters', body: { seriesId: detailSeries.id },
-                                        text: `Delete ALL ${detailChapters.length} chapters and their pages? THIS IS IRREVERSIBLE!`,
-                                        onDone: () => openSeriesDetail(detailSeries.id)
-                                    })}>
-                                        <TrashIcon /> Delete All
-                                    </button>
-                                )}
+                                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                    {selectedChapters.length > 0 ? (
+                                        <button className="btn btn-danger btn-sm" onClick={() => setConfirmModal({
+                                            action: 'delete-selected-chapters', body: { seriesId: detailSeries.id, chapterIds: JSON.stringify(selectedChapters) },
+                                            text: `Delete ${selectedChapters.length} selected chapters and their pages? THIS IS IRREVERSIBLE!`,
+                                            onDone: () => { setSelectedChapters([]); openSeriesDetail(detailSeries.id); }
+                                        })}>
+                                            <TrashIcon /> Delete Selected ({selectedChapters.length})
+                                        </button>
+                                    ) : (
+                                        detailChapters.length > 0 && (
+                                            <button className="btn btn-danger btn-sm" onClick={() => setConfirmModal({
+                                                action: 'delete-all-chapters', body: { seriesId: detailSeries.id },
+                                                text: `Delete ALL ${detailChapters.length} chapters and their pages? THIS IS IRREVERSIBLE!`,
+                                                onDone: () => openSeriesDetail(detailSeries.id)
+                                            })}>
+                                                <TrashIcon /> Delete All
+                                            </button>
+                                        )
+                                    )}
+                                </div>
                             </div>
 
                             {/* Add chapter inline */}
@@ -720,6 +738,15 @@ export default function AdminPanelPage() {
                                             padding: '10px 14px', background: 'var(--bg-tertiary)', borderRadius: 8, gap: 8, flexWrap: 'wrap'
                                         }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={selectedChapters.includes(ch.id)}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) setSelectedChapters(prev => [...prev, ch.id]);
+                                                        else setSelectedChapters(prev => prev.filter(id => id !== ch.id));
+                                                    }}
+                                                    style={{ width: 16, height: 16, cursor: 'pointer' }}
+                                                />
                                                 <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--accent-light)', minWidth: 40 }}>
                                                     #{ch.chapter_number}
                                                 </span>
