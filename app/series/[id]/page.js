@@ -242,7 +242,7 @@ export default function SeriesDetailPage() {
                         {[...chapters].sort((a, b) => sortDesc ? b.chapter_number - a.chapter_number : a.chapter_number - b.chapter_number).map(ch => (
                             <Link key={ch.id} href={`/series/${series.slug || series.id}/chapter/${ch.chapter_number}${selectedLang ? `?lang=${selectedLang}` : ''}`} className="asura-chapter-row" style={{ padding: '12px 16px', borderRadius: '4px', background: 'var(--bg-card)', borderLeft: '3px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                                    <span style={{ fontWeight: 800, fontSize: '0.9rem' }}>Ch. {ch.chapter_number}</span>
+                                    <span style={{ fontWeight: 800, fontSize: '0.9rem' }}>Ch. {Number(ch.chapter_number) % 1 === 0 ? Math.floor(ch.chapter_number) : ch.chapter_number}</span>
                                     {ch.title && ch.title !== `Chapter ${ch.chapter_number}` && (
                                         <span style={{ color: 'var(--text-secondary)' }}>— {ch.title}</span>
                                     )}

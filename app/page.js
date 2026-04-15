@@ -137,6 +137,13 @@ export default function HomePage() {
     try { return Array.isArray(g) ? g : JSON.parse(g || '[]'); } catch { return []; }
   }
 
+  // Format chapter number: shows "1" instead of "1.0", "1.5" for decimals
+  function fmtCh(n) {
+    const num = Number(n);
+    if (isNaN(num)) return n;
+    return num % 1 === 0 ? String(Math.floor(num)) : String(num);
+  }
+
   function timeAgo(date) {
     if (!date) return '';
     const d = typeof date === 'string' && !date.endsWith('Z') ? date + 'Z' : date;
@@ -265,11 +272,11 @@ export default function HomePage() {
                    <span className="cr-subtitle">CONTINUE READING</span>
                    <h3 className="cr-title">{readingHistory[0].series_title}</h3>
                    <span className="cr-chapter">
-                      Ch. {readingHistory[0].chapter_number}
+                      Ch. {fmtCh(readingHistory[0].chapter_number)}
                       {readingHistory[0].latest_chapter && readingHistory[0].latest_chapter > readingHistory[0].chapter_number ?
-                          <span className="cr-badge">{readingHistory[0].latest_chapter - readingHistory[0].chapter_number} New</span> : null
+                          <span className="cr-badge">{Math.floor(readingHistory[0].latest_chapter - readingHistory[0].chapter_number)} New</span> : null
                       }
-                   </span>
+                    </span>
                 </div>
                 <div className="cr-action">
                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
@@ -335,9 +342,9 @@ export default function HomePage() {
                         {s.chapters && s.chapters.map(ch => (
                           <Link key={ch.id} href={`/read/${ch.id}`} className="asura-chapter-row">
                             <span className="name" style={{ fontWeight: 600 }}>
-                              {ch.title && ch.title !== `Chapter ${ch.chapter_number}` 
-                                ? `Ch. ${ch.chapter_number} - ${ch.title}` 
-                                : `Chapter ${ch.chapter_number}`}
+                              {ch.title && ch.title !== `Chapter ${ch.chapter_number}`
+                                ? `Ch. ${fmtCh(ch.chapter_number)} - ${ch.title}`
+                                : `Chapter ${fmtCh(ch.chapter_number)}`}
                             </span>
                             <span className="time" suppressHydrationWarning>{timeAgo(ch.created_at)}</span>
                           </Link>
@@ -369,7 +376,7 @@ export default function HomePage() {
                       <img src={item.cover_url || '/demo/cover1.jpg'} alt="" />
                       <div className="si-info">
                         <span className="si-title">{item.series_title}</span>
-                        <span className="si-sub">Ch. {item.chapter_number} — Continue</span>
+                        <span className="si-sub">Ch. {fmtCh(item.chapter_number)} — Continue</span>
                       </div>
                     </Link>
                   ))}
