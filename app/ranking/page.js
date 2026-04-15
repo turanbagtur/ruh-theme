@@ -121,16 +121,18 @@ export default function RankingPage() {
         return username?.[0]?.toUpperCase() || '?';
     }
 
-    function renderAvatar(u, size = 40) {
+    function renderAvatar(u, size = 40, forPodium = false) {
         if (u.avatar_url && u.avatar_url !== '/default-avatar.png') {
-            return <img src={u.avatar_url} alt="" style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover' }} />;
+            return <img src={u.avatar_url} alt={u.username} style={forPodium ? { width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' } : { width: size, height: size, borderRadius: '50%', objectFit: 'cover', display: 'block', flexShrink: 0 }} />;
         }
         return (
             <div style={{
-                width: size, height: size, borderRadius: '50%',
-                background: 'var(--bg-tertiary)',
+                width: forPodium ? '100%' : size,
+                height: forPodium ? '100%' : size,
+                borderRadius: '50%',
+                background: 'var(--gradient-primary)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: 'var(--text-primary)', fontWeight: 800, fontSize: size * 0.42,
+                color: 'white', fontWeight: 800, fontSize: forPodium ? size * 0.38 : size * 0.42,
                 flexShrink: 0,
             }}>
                 {getInitial(u.username)}
@@ -211,10 +213,10 @@ export default function RankingPage() {
                     {top3[1] && (
                         <div className="podium-item pos-2">
                             <div className="podium-avatar">
-                                <span className="podium-rank" style={{ background: 'transparent', border: 'none', color: '#9ca3af' }}>
+                                <span className="podium-rank" style={{ position: 'absolute', top: -10, right: -10, zIndex: 5, background: 'transparent', border: 'none', color: '#9ca3af', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                     <MedalIcon size={22} color="#9ca3af" />
                                 </span>
-                                {renderAvatar(top3[1], 56)}
+                                {renderAvatar(top3[1], 56, true)}
                             </div>
                             <div className="podium-name">{top3[1].username}</div>
                             <div className="podium-points">
@@ -225,16 +227,16 @@ export default function RankingPage() {
                     {/* Position 1 */}
                     <div className="podium-item pos-1">
                         {/* Floating crown above avatar */}
-                        <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: -8 }}>
-                            <span style={{ color: '#f59e0b', filter: 'drop-shadow(0 2px 6px #f59e0b88)', marginBottom: -4, zIndex: 3 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 4 }}>
+                            <span style={{ color: '#f59e0b', filter: 'drop-shadow(0 2px 6px #f59e0b88)' }}>
                                 <CrownIcon size={28} />
                             </span>
                         </div>
-                        <div className="podium-avatar" style={{ border: '3px solid #f59e0b', boxShadow: '0 0 20px #f59e0b55' }}>
-                            <span className="podium-rank crown" style={{ background: '#f59e0b', border: 'none' }}>1</span>
-                            {renderAvatar(top3[0], 72)}
+                        <div className="podium-avatar" style={{ border: '3px solid #f59e0b', boxShadow: '0 0 20px #f59e0b55', width: 90, height: 90 }}>
+                            <span style={{ position: 'absolute', top: -10, right: -10, zIndex: 5, background: '#f59e0b', width: 26, height: 26, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '0.82rem', color: 'white', border: '2px solid var(--bg-card)', boxShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>1</span>
+                            {renderAvatar(top3[0], 90, true)}
                         </div>
-                        <div className="podium-name" style={{ fontSize: '1.1rem' }}>{top3[0].username}</div>
+                        <div className="podium-name" style={{ fontSize: '1.1rem', marginTop: 8 }}>{top3[0].username}</div>
                         <div className="podium-points" style={{ color: '#f59e0b', fontWeight: 900 }}>
                             <ZapIcon size={13} /> {top3[0].yomi_points} YP
                         </div>
@@ -243,10 +245,10 @@ export default function RankingPage() {
                     {top3[2] && (
                         <div className="podium-item pos-3">
                             <div className="podium-avatar">
-                                <span className="podium-rank" style={{ background: 'transparent', border: 'none', color: '#cd7c38' }}>
+                                <span style={{ position: 'absolute', top: -10, right: -10, zIndex: 5, background: 'transparent', border: 'none', color: '#cd7c38', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                     <MedalIcon size={22} color="#cd7c38" />
                                 </span>
-                                {renderAvatar(top3[2], 56)}
+                                {renderAvatar(top3[2], 56, true)}
                             </div>
                             <div className="podium-name">{top3[2].username}</div>
                             <div className="podium-points">

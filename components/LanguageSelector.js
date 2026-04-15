@@ -54,6 +54,7 @@ export default function LanguageSelector({ selectedLang, onSelect, disabled }) {
         : LANGUAGES;
 
     const [dropRight, setDropRight] = useState(false);
+    const [dropUp, setDropUp] = useState(false);
 
     useEffect(() => {
         function handleClickOutside(e) {
@@ -66,10 +67,26 @@ export default function LanguageSelector({ selectedLang, onSelect, disabled }) {
     function handleOpen(e) {
         if (disabled) return;
         const rect = e.currentTarget.getBoundingClientRect();
-        // If the dropdown would overflow the right side of the viewport, anchor it to the right
+        const dropdownHeight = 340; // estimated max dropdown height
+        // Horizontal: anchor right if not enough room
         setDropRight(rect.left + 230 > window.innerWidth - 16);
+        // Vertical: open upward if not enough room below
+        setDropUp(rect.bottom + dropdownHeight > window.innerHeight - 16);
         setOpen(!open);
         if (open) setSearch('');
+    }
+
+    // Build position style
+    const dropdownStyle = {};
+    if (dropRight) {
+        dropdownStyle.left = 'auto';
+        dropdownStyle.right = 0;
+    }
+    if (dropUp) {
+        dropdownStyle.bottom = '100%';
+        dropdownStyle.top = 'auto';
+        dropdownStyle.marginBottom = 4;
+        dropdownStyle.marginTop = 0;
     }
 
     return (
@@ -88,7 +105,7 @@ export default function LanguageSelector({ selectedLang, onSelect, disabled }) {
             </button>
 
             {open && (
-                <div className="lang-dropdown" style={dropRight ? { left: 'auto', right: 0 } : {}}>
+                <div className="lang-dropdown" style={dropdownStyle}>
                     <div className="lang-dropdown-header">Translate to</div>
                     <div style={{ padding: '6px 10px' }}>
                         <input

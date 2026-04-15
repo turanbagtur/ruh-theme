@@ -134,13 +134,13 @@ export default function SeriesDetailPage() {
                     
                     <div className="asura-action-buttons">
                         {chapters.length > 0 && (
-                            <Link href={`/read/${chapters[0].id}${selectedLang ? `?lang=${selectedLang}` : ''}`} className="btn btn-primary" style={{ padding: '16px 0', fontSize: '1.05rem', letterSpacing: '0.5px' }}>
+                            <Link href={`/series/${series.slug || series.id}/chapter/${chapters[0].chapter_number}${selectedLang ? `?lang=${selectedLang}` : ''}`} className="btn btn-primary" style={{ padding: '16px 0', fontSize: '1.05rem', letterSpacing: '0.5px' }}>
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
                                 Read First Chapter
                             </Link>
                         )}
                         {chapters.length > 1 && (
-                            <Link href={`/read/${chapters[chapters.length - 1].id}${selectedLang ? `?lang=${selectedLang}` : ''}`} className="btn btn-ghost" style={{ background: 'var(--bg-glass)' }}>
+                            <Link href={`/series/${series.slug || series.id}/chapter/${chapters[chapters.length - 1].chapter_number}${selectedLang ? `?lang=${selectedLang}` : ''}`} className="btn btn-ghost" style={{ background: 'var(--bg-glass)' }}>
                                 Read Last Chapter
                             </Link>
                         )}
@@ -240,7 +240,7 @@ export default function SeriesDetailPage() {
                 ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         {[...chapters].sort((a, b) => sortDesc ? b.chapter_number - a.chapter_number : a.chapter_number - b.chapter_number).map(ch => (
-                            <Link key={ch.id} href={`/read/${ch.id}${selectedLang ? `?lang=${selectedLang}` : ''}`} className="asura-chapter-row" style={{ padding: '12px 16px', borderRadius: '4px', background: 'var(--bg-card)', borderLeft: '3px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Link key={ch.id} href={`/series/${series.slug || series.id}/chapter/${ch.chapter_number}${selectedLang ? `?lang=${selectedLang}` : ''}`} className="asura-chapter-row" style={{ padding: '12px 16px', borderRadius: '4px', background: 'var(--bg-card)', borderLeft: '3px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                                     <span style={{ fontWeight: 800, fontSize: '0.9rem' }}>Ch. {ch.chapter_number}</span>
                                     {ch.title && ch.title !== `Chapter ${ch.chapter_number}` && (

@@ -2451,17 +2451,19 @@ select {
     display: none;
   }
 
+  /* mobile-menu-btn shows for non-logged in users only (rendered conditionally in JSX) */
   .mobile-menu-btn {
     display: flex;
   }
 
+  /* auth-buttons hide on mobile (replaced by hamburger menu) */
   .auth-buttons {
     display: none;
   }
 
   .navbar-inner {
     height: 54px;
-    padding: 0 16px;
+    padding: 0 12px;
   }
 
   .hero-slide {
@@ -3710,7 +3712,9 @@ select {
     gap: 10px;
     padding: 10px 12px;
   }
-  .lang-dropdown {
+  /* lang-dropdown becomes a bottom sheet on mobile ONLY for series detail context */
+  .series-detail .lang-dropdown,
+  .asura-series-header .lang-dropdown {
     position: fixed;
     top: auto;
     bottom: 0;
@@ -3723,7 +3727,7 @@ select {
     z-index: 1000;
     animation: slideUp 0.25s ease;
   }
-  .language-selector {
+  .series-detail .language-selector {
     position: static;
   }
 }
@@ -4201,6 +4205,11 @@ a.ann-message:hover {
   border-radius: 50%;
   margin-bottom: 16px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
 }
 .podium-item.pos-1 .podium-avatar {
   width: 100px;
@@ -4208,17 +4217,28 @@ a.ann-message:hover {
   border: 3px solid var(--accent-light);
 }
 
-.podium-avatar img {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
+.podium-avatar img,
+.podium-avatar > div {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 50% !important;
   object-fit: cover;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .podium-rank {
   position: absolute;
   top: -10px;
   right: -10px;
+  z-index: 5;
+}
+
+.podium-rank-badge {
   background: var(--bg-tertiary);
   width: 28px;
   height: 28px;
@@ -4231,8 +4251,12 @@ a.ann-message:hover {
   color: white;
   border: 2px solid var(--bg-card);
   box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  z-index: 5;
 }
-.podium-rank.crown {
+.podium-rank-badge.crown {
   background: #f59e0b;
   color: #fff;
 }
@@ -4394,9 +4418,9 @@ a.ann-message:hover {
 /* === READER TAP ZONES === */
 .reader-tap-zone {
   position: fixed;
-  top: 60px;
+  top: 130px; /* below navbar (60px) + reader header (~70px) */
   bottom: 0;
-  width: 80px;
+  width: 70px;
   z-index: 50;
   display: flex;
   align-items: center;
@@ -4404,25 +4428,36 @@ a.ann-message:hover {
   cursor: pointer;
   opacity: 0;
   transition: opacity 0.3s;
+  /* Don't interfere with interactive elements */
+  pointer-events: none;
 }
 .reader-tap-zone:hover {
   opacity: 1;
-  background: linear-gradient(to right, rgba(0,0,0,0.4), transparent);
+  background: linear-gradient(to right, rgba(0,0,0,0.3), transparent);
 }
-.reader-tap-zone.left { left: 0; }
+.reader-tap-zone.left {
+  left: 0;
+  pointer-events: auto;
+}
 .reader-tap-zone.right {
   right: 0;
   background: none;
+  pointer-events: auto;
 }
 .reader-tap-zone.right:hover {
-  background: linear-gradient(to left, rgba(0,0,0,0.4), transparent);
+  background: linear-gradient(to left, rgba(0,0,0,0.3), transparent);
 }
 .reader-tap-zone svg {
   color: white;
   filter: drop-shadow(0 0 4px rgba(0,0,0,0.7));
 }
 @media (max-width: 768px) {
-  .reader-tap-zone { width: 50px; }
+  .reader-tap-zone {
+    width: 36px;
+    top: 120px; /* navbar 54px + reader header ~66px */
+    opacity: 0;
+    pointer-events: none; /* disabled on mobile to avoid accidental taps */
+  }
 }
 
 /* Shortcut tooltip */
@@ -5064,5 +5099,382 @@ a.ann-message:hover {
     border-radius: var(--radius-xl) var(--radius-xl) 0 0;
     max-width: 100%;
     animation: slideUp 0.25s ease;
+  }
+}
+
+/* ─── Avatar image (small, in navbar) ─────────────────────── */
+.avatar-img-sm {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--border-color);
+  transition: border-color var(--transition);
+  display: block;
+}
+
+.user-avatar-btn:hover .avatar-img-sm {
+  border-color: var(--accent-light);
+}
+
+/* ─── Mobile nav panel (guest users) ──────────────────────── */
+.mobile-nav-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 98;
+  backdrop-filter: blur(4px);
+  animation: fadeInModal 0.2s ease;
+}
+
+.mobile-nav-panel {
+  position: fixed;
+  top: 54px;
+  left: 0;
+  right: 0;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-color);
+  z-index: 99;
+  padding: 8px 0 16px;
+  animation: slideDown 0.2s ease;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+
+.mobile-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all var(--transition);
+  border: none;
+  background: none;
+  width: 100%;
+  cursor: pointer;
+}
+
+.mobile-nav-item:hover,
+.mobile-nav-item:active {
+  color: var(--text-primary);
+  background: var(--accent-dim);
+}
+
+.mobile-nav-item svg {
+  flex-shrink: 0;
+  color: var(--accent-light);
+}
+
+.mobile-nav-divider {
+  height: 1px;
+  background: var(--border-color);
+  margin: 8px 0;
+}
+
+.mobile-nav-signup {
+  color: var(--accent-light);
+  font-weight: 700;
+}
+
+/* ─── Reader Settings Panel ────────────────────────────────── */
+.reader-settings-wrap {
+  position: relative;
+}
+
+.reader-header-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+.reader-ctrl-btn {
+  flex-shrink: 0;
+}
+
+.reader-ctrl-btn.active {
+  color: var(--accent-light);
+  border-color: var(--accent);
+  background: var(--accent-dim);
+}
+
+.reader-settings-panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 0;
+  width: 280px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+  z-index: 500;
+  animation: slideDown 0.2s ease;
+  overflow: hidden;
+}
+
+.rsp-header {
+  padding: 12px 16px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-color);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.rsp-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+.rsp-row:last-child {
+  border-bottom: none;
+}
+
+.rsp-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.rsp-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.rsp-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: 1;
+  height: 4px;
+  background: var(--border-color);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+
+.rsp-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent-light);
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+
+.rsp-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+.rsp-value {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  min-width: 36px;
+  text-align: right;
+}
+
+/* Toggle switch */
+.rsp-toggle {
+  position: relative;
+  width: 40px;
+  height: 22px;
+  background: var(--border-color);
+  border-radius: 11px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.25s;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.rsp-toggle.on {
+  background: var(--accent);
+}
+
+.rsp-toggle-knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: white;
+  transition: left 0.25s;
+}
+
+.rsp-toggle.on .rsp-toggle-knob {
+  left: 21px;
+}
+
+/* ─── Scroll-to-top floating button ────────────────────────── */
+.scroll-top-btn {
+  position: fixed;
+  bottom: 28px;
+  right: 20px;
+  z-index: 200;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--gradient-primary);
+  color: white;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 20px rgba(155,44,44,0.4);
+  cursor: pointer;
+  animation: fadeInUp 0.3s ease;
+  transition: transform var(--transition), box-shadow var(--transition);
+}
+
+.scroll-top-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 28px rgba(155,44,44,0.5);
+}
+
+/* ─── Language selector mobile fix ─────────────────────────── */
+@media (max-width: 768px) {
+  /* Language dropdown: keep relative to button (JS handles top/bottom positioning) */
+  .reader-header .lang-dropdown,
+  .reader-header-controls .lang-dropdown {
+    position: absolute;
+    right: 0;
+    left: auto;
+    max-width: calc(100vw - 24px);
+    max-height: 55vh;
+    overflow-y: auto;
+    z-index: 1000;
+  }
+
+  .reader-header-controls .language-selector {
+    position: relative;
+  }
+
+  .reader-settings-panel {
+    position: absolute;
+    right: 0;
+    left: auto;
+    max-width: calc(100vw - 24px);
+    z-index: 1000;
+  }
+
+  .reader-header-controls {
+    gap: 6px;
+  }
+
+  .translate-btn-text {
+    display: none;
+  }
+
+  .reader-header {
+    flex-wrap: nowrap;
+    align-items: center;
+  }
+
+  .reader-header-left {
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .reader-header-info h2 {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 140px;
+  }
+}
+
+@media (max-width: 480px) {
+  .scroll-top-btn {
+    bottom: 20px;
+    right: 16px;
+    width: 40px;
+    height: 40px;
+  }
+}
+
+/* ─── Hide reader shortcut tooltip on mobile ────────────────── */
+@media (max-width: 768px) {
+  .hide-on-mobile {
+    display: none !important;
+  }
+}
+
+/* ─── Ranking page: profile photo centering fix ─────────────── */
+.podium-avatar {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.podium-avatar > img,
+.podium-avatar > div {
+  position: relative;
+}
+
+/* ─── Comment menu mobile overflow fix ──────────────────────── */
+@media (max-width: 600px) {
+  .comment-menu {
+    right: auto;
+    left: 0;
+    min-width: 180px;
+    max-width: calc(100vw - 32px);
+  }
+
+  /* For comments near the bottom, show menu above */
+  .comment-actions-right {
+    position: static;
+  }
+}
+
+/* ─── Notification dropdown mobile ─────────────────────────── */
+@media (max-width: 480px) {
+  .notif-dropdown {
+    position: fixed;
+    top: 54px;
+    left: 8px;
+    right: 8px;
+    width: auto;
+    max-height: 70vh;
+  }
+}
+
+/* ─── Mobile reader tap zone fix: don't overlap controls ────── */
+@media (max-width: 768px) {
+  .reader-tap-zone {
+    /* Tap zones shouldn't overlap the header controls - reduce width */
+    width: 40px;
+    /* Keep away from the sides where scrollbars / controls are */
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .reader-tap-zone:active {
+    opacity: 1;
+  }
+}
+
+/* ─── Dropdown menu mobile: ensure it doesn't go off screen ─── */
+@media (max-width: 480px) {
+  .dropdown-menu {
+    right: -8px;
+    max-width: calc(100vw - 24px);
   }
 }
