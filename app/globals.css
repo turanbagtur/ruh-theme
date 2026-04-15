@@ -101,7 +101,7 @@ select {
 .navbar {
   position: sticky;
   top: 0;
-  z-index: 100;
+  z-index: 1000;
   background: rgba(12, 12, 15, 0.92);
   backdrop-filter: blur(20px) saturate(180%);
   border-bottom: 1px solid var(--border-color);
@@ -251,7 +251,7 @@ select {
   backdrop-filter: blur(20px);
   box-shadow: var(--shadow);
   animation: slideDown 0.2s ease;
-  z-index: 200;
+  z-index: 1100;
 }
 
 .dropdown-header {
@@ -4972,6 +4972,7 @@ a.ann-message:hover {
   pointer-events: none;
 }
 .notif-dropdown {
+  z-index: 1100;
   position: absolute;
   top: calc(100% + 12px);
   right: 0;
@@ -5042,7 +5043,7 @@ a.ann-message:hover {
   bottom: 0;
   left: 0;
   right: 0;
-  z-index: 9999;
+  z-index: 900; /* below navbar (1000) so navbar dropdowns remain clickable */
   animation: rtoSlideUp 0.22s cubic-bezier(0.4, 0, 0.2, 1) both;
 }
 

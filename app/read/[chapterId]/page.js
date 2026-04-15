@@ -70,8 +70,8 @@ function ReaderContent() {
 
     // Tap-to-show overlay logic — show overlay on tap, auto-hide after 3s
     function handleReaderTap(e) {
-        // Ignore taps on interactive elements
-        if (e.target.closest('button, a, input, select')) return;
+        // Ignore taps on interactive elements or anything inside the navbar / dropdowns
+        if (e.target.closest('button, a, input, select, .navbar, .user-menu, .dropdown-menu, .notif-dropdown, .notif-bell-wrapper')) return;
         // Only show if user has scrolled down a bit
         if (window.scrollY < 200) return;
         // Toggle
