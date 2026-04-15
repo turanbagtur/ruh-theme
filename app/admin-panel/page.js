@@ -217,8 +217,16 @@ export default function AdminPanelPage() {
 
     async function confirmAction() {
         if (!confirmModal) return;
-        try { show((await doAction(confirmModal.action, confirmModal.body)).message); fetchStats(); if (confirmModal.onDone) confirmModal.onDone(); }
-        catch (e) { show(e.message, 'error'); }
+        try {
+            // If action is a function (custom async), call it directly
+            if (typeof confirmModal.action === 'function') {
+                await confirmModal.action();
+            } else {
+                show((await doAction(confirmModal.action, confirmModal.body)).message);
+                fetchStats();
+                if (confirmModal.onDone) confirmModal.onDone();
+            }
+        } catch (e) { show(e.message, 'error'); }
         setConfirmModal(null);
     }
 
