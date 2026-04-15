@@ -265,10 +265,10 @@ export default function CommentSection({ chapterId, seriesId }) {
 
     function getRankBadgeParams(rank) {
         if (!rank) return null;
-        if (rank === 1) return { class: 'asura-badge-1', type: 'crown' };
-        if (rank <= 3) return { class: 'asura-badge-top3', type: 'text', label: `#${rank}` };
-        if (rank <= 10) return { class: 'asura-badge-top', type: 'text', label: `#${rank}` };
-        if (rank <= 50) return { class: 'asura-badge-mid', type: 'text', label: `#${rank}` };
+        if (rank === 1)   return { class: 'asura-badge-1',    rank };
+        if (rank <= 3)    return { class: 'asura-badge-top3', rank };
+        if (rank <= 10)   return { class: 'asura-badge-top',  rank };
+        if (rank <= 50)   return { class: 'asura-badge-mid',  rank };
         return null;
     }
 
@@ -299,18 +299,14 @@ export default function CommentSection({ chapterId, seriesId }) {
                             {c.username?.[0]?.toUpperCase() || '?'}
                         </div>
                     )}
-                    {/* Render Rank Badge if present */}
+                    {/* Rank Badge — crown SVG + rank number */}
                     {badge && (
                         <div className={`asura-avatar-badge ${badge.class}`}>
-                            {badge.type === 'crown' ? (
-                                /* Crown SVG (Lucide-style) */
-                                <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-                                    <path d="M2 19h20l-2-10-5 5-3-8-3 8-5-5L2 19z"/>
-                                    <rect x="2" y="20" width="20" height="2" rx="1"/>
-                                </svg>
-                            ) : (
-                                <span>{badge.label}</span>
-                            )}
+                            <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor" stroke="none" style={{ flexShrink: 0 }}>
+                                <path d="M2 19h20l-2-10-5 5-3-8-3 8-5-5L2 19z"/>
+                                <rect x="2" y="20" width="20" height="2" rx="1"/>
+                            </svg>
+                            <span>#{badge.rank}</span>
                         </div>
                     )}
                 </div>

@@ -4379,39 +4379,29 @@ a.ann-message:hover {
   border-radius: 50%;
   object-fit: cover;
 }
-/* Rank badge — sits bottom-right of avatar, pill shape, clearly a rank not a notification */
+/* Rank badge — sits bottom-right of avatar, pill with crown icon + number */
 .asura-avatar-badge {
   position: absolute;
-  bottom: -6px;
-  right: -6px;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 5px;
-  border-radius: 10px;
+  bottom: -7px;
+  right: -8px;
   display: flex;
   align-items: center;
-  justify-content: center;
-  font-size: 0.6rem;
+  gap: 2px;
+  padding: 2px 6px 2px 4px;
+  border-radius: 20px;
+  font-size: 0.58rem;
   font-weight: 900;
   color: white;
   border: 2px solid var(--bg-card);
   white-space: nowrap;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.6);
   line-height: 1;
+  letter-spacing: 0.2px;
 }
-/* Crown for #1 — circle with SVG icon */
-.asura-badge-1 {
-  background: linear-gradient(135deg, #b91c1c, #7f1d1d);
-  width: 20px;
-  min-width: 20px;
-  height: 20px;
-  padding: 0;
-  border-radius: 50%;
-  color: #fcd34d;
-}
-.asura-badge-top3 { background: linear-gradient(135deg, #f59e0b, #d97706); }
-.asura-badge-top  { background: linear-gradient(135deg, #10b981, #059669); }
-.asura-badge-mid  { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+.asura-badge-1    { background: linear-gradient(135deg, #1a1a2e, #16213e); color: #fbbf24; }
+.asura-badge-top3 { background: linear-gradient(135deg, #92400e, #d97706); color: #fef3c7; }
+.asura-badge-top  { background: linear-gradient(135deg, #065f46, #059669); color: #d1fae5; }
+.asura-badge-mid  { background: linear-gradient(135deg, #1e3a8a, #2563eb); color: #dbeafe; }
 
 .asura-comment-content {
   flex: 1;
