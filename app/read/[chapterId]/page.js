@@ -31,9 +31,9 @@ function ReaderContent() {
     // Tap-to-show overlay
     const [showReaderOverlay, setShowReaderOverlay] = useState(false);
     const [showOverlaySettings, setShowOverlaySettings] = useState(false);
+    const [showChapterPicker, setShowChapterPicker] = useState(false);
     const [allChapters, setAllChapters] = useState([]);
     const overlayTimerRef = useRef(null);
-    const commentsRef = useRef(null);
 
     // Initialize reader settings from localStorage
     useEffect(() => {
@@ -330,18 +330,29 @@ function ReaderContent() {
                         ) : <span className="rto-empty-side"/>}
 
                         {allChapters.length > 0 ? (
-                            <select
-                                className="rto-chapter-select"
-                                value={data.chapter?.id || ''}
-                                onChange={e => {
-                                    const ch = allChapters.find(c => String(c.id) === e.target.value);
-                                    if (ch) { setShowReaderOverlay(false); navigateTo(ch); }
-                                }}
-                            >
-                                {[...allChapters].sort((a,b) => b.chapter_number - a.chapter_number).map(ch => (
-                                    <option key={ch.id} value={ch.id}>Ch. {ch.chapter_number}{ch.title ? ` — ${ch.title}` : ''}</option>
-                                ))}
-                            </select>
+                            <div className="rto-chapter-picker-wrap">
+                                <button
+                                    className="rto-chapter-btn"
+                                    onClick={e => { e.stopPropagation(); setShowChapterPicker(v => !v); keepOverlayOpen(); }}
+                                >
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                                    Ch. {data.chapter?.chapter_number}
+                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m18 15-6-6-6 6"/></svg>
+                                </button>
+                                {showChapterPicker && (
+                                    <div className="rto-chapter-list" onClick={e => e.stopPropagation()}>
+                                        {[...allChapters].sort((a,b) => b.chapter_number - a.chapter_number).map(ch => (
+                                            <button
+                                                key={ch.id}
+                                                className={`rto-chapter-item ${String(ch.id) === String(data.chapter?.id) ? 'current' : ''}`}
+                                                onClick={() => { setShowChapterPicker(false); setShowReaderOverlay(false); navigateTo(ch); }}
+                                            >
+                                                Ch. {ch.chapter_number}{ch.title ? ` — ${ch.title}` : ''}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                         ) : (
                             <span className="rto-ch-label">Chapter {data.chapter?.chapter_number}</span>
                         )}
@@ -364,14 +375,15 @@ function ReaderContent() {
 
                         {/* Go to comments */}
                         <button className="rto-tool-btn" onClick={() => {
+                            // Capture offset BEFORE closing overlay
+                            const el = document.getElementById('comments-section');
+                            const targetScrollY = el
+                                ? el.getBoundingClientRect().top + window.scrollY - 80
+                                : document.body.scrollHeight;
                             setShowReaderOverlay(false);
                             setTimeout(() => {
-                                const el = document.getElementById('comments-section');
-                                if (el) {
-                                    const top = el.getBoundingClientRect().top + window.scrollY - 80;
-                                    window.scrollTo({ top, behavior: 'smooth' });
-                                }
-                            }, 150);
+                                window.scrollTo({ top: targetScrollY, behavior: 'smooth' });
+                            }, 80);
                         }}>
                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                             <span>Comments</span>
