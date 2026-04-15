@@ -307,8 +307,9 @@ function ReaderContent() {
         {showReaderOverlay && data && (
             <div
                 className="reader-tap-overlay"
+                onClick={e => e.stopPropagation()}
+                onTouchStart={e => { e.stopPropagation(); keepOverlayOpen(); }}
                 onMouseMove={keepOverlayOpen}
-                onTouchStart={keepOverlayOpen}
             >
                 <div className="rto-inner">
                     {/* Row 1: Seri adı + kapat */}
@@ -366,8 +367,11 @@ function ReaderContent() {
                             setShowReaderOverlay(false);
                             setTimeout(() => {
                                 const el = document.getElementById('comments-section');
-                                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                            }, 100);
+                                if (el) {
+                                    const top = el.getBoundingClientRect().top + window.scrollY - 80;
+                                    window.scrollTo({ top, behavior: 'smooth' });
+                                }
+                            }, 150);
                         }}>
                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                             <span>Comments</span>
@@ -399,7 +403,15 @@ function ReaderContent() {
                                 <label>Image Width</label>
                                 <div className="rto-slider-wrap">
                                     <input type="range" min="50" max="100" step="5" value={fontSize}
-                                        onChange={e => { changeFontSize(Number(e.target.value)); keepOverlayOpen(); }} />
+                                        onClick={e => e.stopPropagation()}
+                                        onTouchStart={e => e.stopPropagation()}
+                                        onTouchMove={e => e.stopPropagation()}
+                                        onChange={e => {
+                                            const scrollY = window.scrollY;
+                                            changeFontSize(Number(e.target.value));
+                                            requestAnimationFrame(() => window.scrollTo(0, scrollY));
+                                            keepOverlayOpen();
+                                        }} />
                                     <span>{fontSize}%</span>
                                 </div>
                             </div>
@@ -407,11 +419,14 @@ function ReaderContent() {
                                 <label>Brightness</label>
                                 <div className="rto-slider-wrap">
                                     <input type="range" min="30" max="100" step="5" value={brightness}
+                                        onClick={e => e.stopPropagation()}
+                                        onTouchStart={e => e.stopPropagation()}
+                                        onTouchMove={e => e.stopPropagation()}
                                         onChange={e => { changeBrightness(Number(e.target.value)); keepOverlayOpen(); }} />
                                     <span>{brightness}%</span>
                                 </div>
                             </div>
-                            <button className="rto-reset-btn" onClick={() => { changeFontSize(100); changeBrightness(100); keepOverlayOpen(); }}>Reset All</button>
+                            <button className="rto-reset-btn" onClick={e => { e.stopPropagation(); changeFontSize(100); changeBrightness(100); keepOverlayOpen(); }}>Reset All</button>
                         </div>
                     )}
                 </div>
