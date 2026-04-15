@@ -7,6 +7,7 @@
   --bg-card: #151515;
   --bg-glass: rgba(21, 21, 21, 0.85);
   --bg-input: #1e1e1e;
+  --bg-tertiary: #1a1a1a;
   --border-color: #2a2a2a;
   --border-hover: #3d3d3d;
   --text-primary: #ffffff;
@@ -17,6 +18,10 @@
   --accent-bright: #f87171;
   --accent-dim: rgba(239, 68, 68, 0.1);
   --accent-glow: rgba(239, 68, 68, 0.15);
+  --accent-rgb: 185,28,28;
+  /* --primary aliases accent so no purple fallback */
+  --primary: #b91c1c;
+  --primary-hover: #991b1b;
   --gradient-primary: linear-gradient(135deg, #7f1d1d 0%, #b91c1c 50%, #991b1b 100%);
   --gradient-hero: linear-gradient(180deg, rgba(127, 29, 29, 0.15) 0%, transparent 60%);
   --gradient-card: linear-gradient(145deg, rgba(127, 29, 29, 0.08) 0%, transparent 70%);
@@ -4188,18 +4193,42 @@ a.ann-message:hover {
 .reaction-emoji-btn.active {
   opacity: 1;
 }
+/* Kill any stray pseudo-element dots */
+.reaction-emoji-btn::before,
+.reaction-emoji-btn::after,
+.reaction-emoji-btn .emoji-icon::before,
+.reaction-emoji-btn .emoji-icon::after {
+  display: none !important;
+}
 .reaction-emoji-btn .emoji-icon {
   font-size: 2rem;
   filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+  transition: transform 0.2s ease;
+  position: relative;
+}
+.reaction-emoji-btn.active .emoji-icon {
+  transform: scale(1.18);
+  filter: drop-shadow(0 3px 8px rgba(0,0,0,0.6));
 }
 .reaction-emoji-btn .emoji-count {
   font-size: 0.9rem;
   font-weight: 800;
   color: var(--text-primary);
 }
+.reaction-emoji-btn.active .emoji-count {
+  color: var(--accent-light);
+}
 .reaction-emoji-btn .emoji-label {
   font-size: 0.75rem;
   color: var(--text-muted);
+  padding: 2px 8px;
+  border-radius: 20px;
+  transition: all 0.2s;
+}
+.reaction-emoji-btn.active .emoji-label {
+  background: rgba(var(--accent-rgb, 155,44,44), 0.18);
+  color: var(--accent-light);
+  font-weight: 700;
 }
 
 .asura-comment-header {
