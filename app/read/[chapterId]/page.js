@@ -30,8 +30,10 @@ function ReaderContent() {
 
     // Tap-to-show overlay
     const [showReaderOverlay, setShowReaderOverlay] = useState(false);
+    const [showOverlaySettings, setShowOverlaySettings] = useState(false);
     const [allChapters, setAllChapters] = useState([]);
     const overlayTimerRef = useRef(null);
+    const commentsRef = useRef(null);
 
     // Initialize reader settings from localStorage
     useEffect(() => {
@@ -302,7 +304,6 @@ function ReaderContent() {
         )}
 
         {/* ─── Tap-to-show Reader Control Overlay ─────────────────── */}
-        {/* MUST be outside fade-in div so position:fixed works correctly */}
         {showReaderOverlay && data && (
             <div
                 className="reader-tap-overlay"
@@ -310,34 +311,24 @@ function ReaderContent() {
                 onTouchStart={keepOverlayOpen}
             >
                 <div className="rto-inner">
-                    {/* Series title */}
-                    <div className="rto-title">{data.series?.title}</div>
-
-                    {/* Chapter navigation row */}
-                    <div className="rto-nav-row">
-                        {data.prevChapter ? (
-                            <button className="rto-btn" onClick={() => { setShowReaderOverlay(false); navigateTo(data.prevChapter); }}>
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m15 18-6-6 6-6"/></svg>
-                                Ch. {data.prevChapter.chapter_number}
-                            </button>
-                        ) : <span />}
-
-                        <Link href={`/series/${seriesSlug}`} className="rto-btn rto-btn-series" onClick={() => setShowReaderOverlay(false)}>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-                            Series
-                        </Link>
-
-                        {data.nextChapter ? (
-                            <button className="rto-btn rto-btn-next" onClick={() => { setShowReaderOverlay(false); navigateTo(data.nextChapter); }}>
-                                Ch. {data.nextChapter.chapter_number}
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m9 18 6-6-6-6"/></svg>
-                            </button>
-                        ) : <span />}
+                    {/* Row 1: Seri adı + kapat */}
+                    <div className="rto-topbar">
+                        <span className="rto-title">{data.series?.title} — Ch. {data.chapter?.chapter_number}</span>
+                        <button className="rto-icon-btn rto-close" onClick={() => setShowReaderOverlay(false)} title="Close">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                        </button>
                     </div>
 
-                    {/* Chapter selector + utilities row */}
-                    <div className="rto-tools-row">
-                        {allChapters.length > 0 && (
+                    {/* Row 2: Önceki | Bölüm Seçici | Sonraki */}
+                    <div className="rto-nav-row">
+                        {data.prevChapter ? (
+                            <button className="rto-btn rto-btn-prev" onClick={() => { setShowReaderOverlay(false); navigateTo(data.prevChapter); }}>
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m15 18-6-6 6-6"/></svg>
+                                Ch. {data.prevChapter.chapter_number}
+                            </button>
+                        ) : <span className="rto-empty-side"/>}
+
+                        {allChapters.length > 0 ? (
                             <select
                                 className="rto-chapter-select"
                                 value={data.chapter?.id || ''}
@@ -347,27 +338,82 @@ function ReaderContent() {
                                 }}
                             >
                                 {[...allChapters].sort((a,b) => b.chapter_number - a.chapter_number).map(ch => (
-                                    <option key={ch.id} value={ch.id}>Chapter {ch.chapter_number}{ch.title ? ` — ${ch.title}` : ''}</option>
+                                    <option key={ch.id} value={ch.id}>Ch. {ch.chapter_number}{ch.title ? ` — ${ch.title}` : ''}</option>
                                 ))}
                             </select>
+                        ) : (
+                            <span className="rto-ch-label">Chapter {data.chapter?.chapter_number}</span>
                         )}
 
-                        <button className="rto-icon-btn" onClick={() => { window.scrollTo({ top: 0, behavior: 'smooth' }); setShowReaderOverlay(false); }} title="Scroll to top">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m18 15-6-6-6 6"/></svg>
-                        </button>
-
-                        <button className={`rto-icon-btn ${theaterMode ? 'active' : ''}`} onClick={() => { toggleTheaterMode(); keepOverlayOpen(); }} title="Theater mode">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill={theaterMode ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.9 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>
-                        </button>
-
-                        <button className={`rto-icon-btn ${showSettings ? 'active' : ''}`} onClick={() => { setShowSettings(!showSettings); keepOverlayOpen(); }} title="Settings">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-                        </button>
-
-                        <button className="rto-icon-btn rto-close" onClick={() => setShowReaderOverlay(false)} title="Close">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
-                        </button>
+                        {data.nextChapter ? (
+                            <button className="rto-btn rto-btn-next" onClick={() => { setShowReaderOverlay(false); navigateTo(data.nextChapter); }}>
+                                Ch. {data.nextChapter.chapter_number}
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m9 18 6-6-6-6"/></svg>
+                            </button>
+                        ) : <span className="rto-empty-side"/>}
                     </div>
+
+                    {/* Row 3: Utility buttons */}
+                    <div className="rto-tools-row">
+                        {/* Scroll to top */}
+                        <button className="rto-tool-btn" onClick={() => { window.scrollTo({ top: 0, behavior: 'smooth' }); setShowReaderOverlay(false); }}>
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m18 15-6-6-6 6"/></svg>
+                            <span>Top</span>
+                        </button>
+
+                        {/* Go to comments */}
+                        <button className="rto-tool-btn" onClick={() => {
+                            setShowReaderOverlay(false);
+                            setTimeout(() => {
+                                const el = document.getElementById('comments-section');
+                                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            }, 100);
+                        }}>
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                            <span>Comments</span>
+                        </button>
+
+                        {/* Theater mode */}
+                        <button className={`rto-tool-btn ${theaterMode ? 'active' : ''}`} onClick={() => { toggleTheaterMode(); keepOverlayOpen(); }}>
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill={theaterMode ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.9 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>
+                            <span>{theaterMode ? 'Lights On' : 'Lights Off'}</span>
+                        </button>
+
+                        {/* Settings toggle (inline in overlay) */}
+                        <button className={`rto-tool-btn ${showOverlaySettings ? 'active' : ''}`} onClick={() => { setShowOverlaySettings(v => !v); keepOverlayOpen(); }}>
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                            <span>Settings</span>
+                        </button>
+
+                        {/* Series page */}
+                        <Link href={`/series/${seriesSlug}`} className="rto-tool-btn" onClick={() => setShowReaderOverlay(false)}>
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                            <span>Series</span>
+                        </Link>
+                    </div>
+
+                    {/* Settings panel (inline, shown when settings toggled) */}
+                    {showOverlaySettings && (
+                        <div className="rto-settings-panel" onMouseMove={keepOverlayOpen} onTouchStart={keepOverlayOpen}>
+                            <div className="rto-setting-row">
+                                <label>Image Width</label>
+                                <div className="rto-slider-wrap">
+                                    <input type="range" min="50" max="100" step="5" value={fontSize}
+                                        onChange={e => { changeFontSize(Number(e.target.value)); keepOverlayOpen(); }} />
+                                    <span>{fontSize}%</span>
+                                </div>
+                            </div>
+                            <div className="rto-setting-row">
+                                <label>Brightness</label>
+                                <div className="rto-slider-wrap">
+                                    <input type="range" min="30" max="100" step="5" value={brightness}
+                                        onChange={e => { changeBrightness(Number(e.target.value)); keepOverlayOpen(); }} />
+                                    <span>{brightness}%</span>
+                                </div>
+                            </div>
+                            <button className="rto-reset-btn" onClick={() => { changeFontSize(100); changeBrightness(100); keepOverlayOpen(); }}>Reset All</button>
+                        </div>
+                    )}
                 </div>
             </div>
         )}
@@ -603,7 +649,7 @@ function ReaderContent() {
             </div>
 
             {/* Comments */}
-            <div className="page-container">
+            <div id="comments-section" className="page-container">
                 <CommentSection chapterId={chapterId} seriesId={series.id} />
             </div>
         </div>
