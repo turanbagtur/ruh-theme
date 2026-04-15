@@ -137,6 +137,17 @@ export default function AdminPanelPage() {
         if (token) fetchStats();
     }, [user, authLoading, token]);
 
+    // Load series requests when switching to requests tab
+    useEffect(() => {
+        if (tab !== 'requests' || !token) return;
+        setReqLoading(true);
+        authFetch('/api/series-requests?admin=1')
+            .then(r => r.json())
+            .then(d => setSeriesRequests(d.requests || []))
+            .catch(() => {})
+            .finally(() => setReqLoading(false));
+    }, [tab, token]);
+
     function show(text, type = 'success') { setMsg(text); setMsgType(type); setTimeout(() => setMsg(''), 4000); }
 
     async function fetchStats() {
@@ -1032,20 +1043,6 @@ export default function AdminPanelPage() {
                                 </button>
                             ))}
                         </div>
-
-                        {/* Auto-load on first render */}
-                        {seriesRequests.length === 0 && !reqLoading && (() => {
-                            setTimeout(async () => {
-                                setReqLoading(true);
-                                try {
-                                    const res = await authFetch('/api/series-requests?admin=1');
-                                    const data = await res.json();
-                                    setSeriesRequests(data.requests || []);
-                                } catch {}
-                                setReqLoading(false);
-                            }, 0);
-                            return null;
-                        })()}
 
                         {reqLoading ? (
                             <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}><div className="spinner" /></div>

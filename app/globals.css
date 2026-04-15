@@ -5546,6 +5546,22 @@ a.ann-message:hover {
 }
 .req-link:hover { text-decoration: underline; }
 
+.req-expand-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 3px 0;
+  transition: color 0.15s;
+}
+.req-expand-btn:hover { color: var(--text-secondary); }
+
 /* Mobile */
 @media (max-width: 600px) {
   .requests-header { flex-direction: column; }
