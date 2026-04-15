@@ -396,59 +396,58 @@ export default function HomePage() {
               </div>
             )}
 
-            {/* Most Read (En Çok Okunanlar) — Redesigned */}
-            <div className="mr2-widget">
-              <div className="mr2-header">
-                <span className="mr2-title-icon">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
-                </span>
-                <h3 className="mr2-title">Most Read</h3>
+            {/* Most Read Widget — v3 (reference style) */}
+            <div className="mr3-widget">
+              {/* Header row: title left, tabs right */}
+              <div className="mr3-header">
+                <h3 className="mr3-title">Most Read</h3>
+                <div className="mr3-tabs">
+                  {[['daily','Daily'],['weekly','Weekly'],['monthly','Monthly'],['all','All']].map(([key, label]) => (
+                    <button key={key} className={`mr3-tab ${topPeriod === key ? 'active' : ''}`} onClick={() => setTopPeriod(key)}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              <div className="mr2-tabs">
-                {['daily','weekly','monthly','all'].map(p => (
-                  <button key={p} className={`mr2-tab ${topPeriod === p ? 'active' : ''}`} onClick={() => setTopPeriod(p)}>
-                    {p.charAt(0).toUpperCase() + p.slice(1)}
-                  </button>
-                ))}
-              </div>
-
-              <div className="mr2-list" style={{ opacity: topLoading ? 0.4 : 1, transition: 'opacity 0.2s' }}>
-                {topSeries.map((s, idx) => (
-                  <Link key={s.id} href={`/series/${s.slug || s.id}`} className={`mr2-item ${idx < 3 ? `mr2-top${idx+1}` : ''}`}>
-                    {/* Rank number */}
-                    <div className="mr2-rank">
-                      {idx === 0 ? (
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="#f59e0b" stroke="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                      ) : (
-                        <span>{idx + 1}</span>
-                      )}
-                    </div>
-
-                    {/* Cover */}
-                    <div className="mr2-cover">
-                      <img src={s.cover_url || '/demo/cover1.jpg'} alt={s.title} loading="lazy" />
-                    </div>
-
-                    {/* Info */}
-                    <div className="mr2-info">
-                      <span className="mr2-name">{s.title}</span>
-                      <div className="mr2-meta">
-                        <span className="mr2-rating">
-                          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                          {s.rating?.toFixed(1) || '0.0'}
-                        </span>
-                        <span className="mr2-views">
-                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                          {(topPeriod === 'all' ? (s.views||0) : (s.period_views||0)).toLocaleString()}
-                        </span>
+              <div className="mr3-list" style={{ opacity: topLoading ? 0.4 : 1, transition: 'opacity 0.2s' }}>
+                {topSeries.map((s, idx) => {
+                  const rating = s.rating || 0;
+                  const fullStars = Math.floor(rating / 2);
+                  const halfStar = (rating / 2) - fullStars >= 0.4;
+                  const genres = parseGenres(s.genres).slice(0, 3).join(', ');
+                  return (
+                    <Link key={s.id} href={`/series/${s.slug || s.id}`} className="mr3-item">
+                      {/* Badge rank */}
+                      <div className={`mr3-badge mr3-badge-${Math.min(idx + 1, 4)}`}>{idx + 1}</div>
+                      {/* Cover */}
+                      <div className="mr3-cover">
+                        <img src={s.cover_url || '/demo/cover1.jpg'} alt={s.title} loading="lazy" />
                       </div>
-                      <div className="mr2-genres">
-                        {parseGenres(s.genres).slice(0,2).map((g,i) => <span key={i}>{g}</span>)}
+                      {/* Info */}
+                      <div className="mr3-info">
+                        <span className="mr3-name">{s.title}</span>
+                        {genres && <span className="mr3-genres-text">Genres: {genres}</span>}
+                        <div className="mr3-stars">
+                          {Array.from({length: 5}).map((_, i) => (
+                            <svg key={i} width="13" height="13" viewBox="0 0 24 24"
+                              fill={i < fullStars ? '#f59e0b' : (i === fullStars && halfStar ? 'url(#half)' : 'none')}
+                              stroke="#f59e0b" strokeWidth="1.5">
+                              <defs>
+                                <linearGradient id="half">
+                                  <stop offset="50%" stopColor="#f59e0b"/>
+                                  <stop offset="50%" stopColor="transparent"/>
+                                </linearGradient>
+                              </defs>
+                              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                            </svg>
+                          ))}
+                          <span className="mr3-rating-num">{(rating / 2).toFixed(1)}</span>
+                        </div>
                       </div>
-                    </div>
-                  </Link>
-                ))}
+                    </Link>
+                  );
+                })}
                 {!topLoading && topSeries.length === 0 && (
                   <div className="empty-text" style={{padding:'20px 0',textAlign:'center'}}>No views recorded.</div>
                 )}
