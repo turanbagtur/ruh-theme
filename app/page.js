@@ -412,9 +412,12 @@ export default function HomePage() {
 
               <div className="mr3-list" style={{ opacity: topLoading ? 0.4 : 1, transition: 'opacity 0.2s' }}>
                 {topSeries.map((s, idx) => {
+                  // rating is 0-10 scale; display as-is, show 5 stars by dividing by 2
                   const rating = s.rating || 0;
-                  const fullStars = Math.floor(rating / 2);
-                  const halfStar = (rating / 2) - fullStars >= 0.4;
+                  const starVal = rating / 2; // 0-5 for stars
+                  const fullStars = Math.floor(starVal);
+                  const halfStar = starVal - fullStars >= 0.4;
+                  const gradId = `half-${s.id}`;
                   const genres = parseGenres(s.genres).slice(0, 3).join(', ');
                   return (
                     <Link key={s.id} href={`/series/${s.slug || s.id}`} className="mr3-item">
@@ -429,20 +432,23 @@ export default function HomePage() {
                         <span className="mr3-name">{s.title}</span>
                         {genres && <span className="mr3-genres-text">Genres: {genres}</span>}
                         <div className="mr3-stars">
+                          <svg width="0" height="0" style={{position:'absolute'}}>
+                            <defs>
+                              <linearGradient id={gradId}>
+                                <stop offset="50%" stopColor="#f59e0b"/>
+                                <stop offset="50%" stopColor="transparent"/>
+                              </linearGradient>
+                            </defs>
+                          </svg>
                           {Array.from({length: 5}).map((_, i) => (
                             <svg key={i} width="13" height="13" viewBox="0 0 24 24"
-                              fill={i < fullStars ? '#f59e0b' : (i === fullStars && halfStar ? 'url(#half)' : 'none')}
+                              fill={i < fullStars ? '#f59e0b' : (i === fullStars && halfStar ? `url(#${gradId})` : 'none')}
                               stroke="#f59e0b" strokeWidth="1.5">
-                              <defs>
-                                <linearGradient id="half">
-                                  <stop offset="50%" stopColor="#f59e0b"/>
-                                  <stop offset="50%" stopColor="transparent"/>
-                                </linearGradient>
-                              </defs>
                               <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
                             </svg>
                           ))}
-                          <span className="mr3-rating-num">{(rating / 2).toFixed(1)}</span>
+                          {/* Show actual rating value, not /2 */}
+                          <span className="mr3-rating-num">{rating.toFixed(1)}</span>
                         </div>
                       </div>
                     </Link>
