@@ -45,6 +45,11 @@ function ReaderContent() {
         if (storedBr) setBrightness(Number(storedBr));
     }, []);
 
+    // Scroll to top whenever the chapter changes
+    useEffect(() => {
+        window.scrollTo({ top: 0, behavior: 'instant' });
+    }, [chapterId]);
+
     // Scroll-to-top visibility
     useEffect(() => {
         function handleScroll() {
