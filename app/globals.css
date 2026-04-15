@@ -5368,11 +5368,17 @@ a.ann-message:hover {
   }
 
   .reader-settings-panel {
-    position: absolute;
-    right: 0;
-    left: auto;
-    max-width: calc(100vw - 24px);
+    position: fixed;
+    top: 70px; /* below the reader header ~54px + 16px padding */
+    right: 8px;
+    left: 8px;
+    width: auto;
+    max-width: 100%;
+    border-radius: var(--radius-lg);
     z-index: 1000;
+    box-shadow: 0 16px 40px rgba(0,0,0,0.6);
+    overflow-y: auto;
+    max-height: calc(100vh - 90px);
   }
 
   .reader-header-controls {

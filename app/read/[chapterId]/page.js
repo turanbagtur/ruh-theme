@@ -253,6 +253,17 @@ function ReaderContent() {
     const seriesSlug = series.slug || series.id;
 
     return (
+        <>
+        {/* Floating scroll-to-top button — MUST be outside fade-in div (transform breaks position:fixed) */}
+        {showScrollTop && (
+            <button
+                className="scroll-top-btn"
+                onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                aria-label="Scroll to top"
+            >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m18 15-6-6-6 6" /></svg>
+            </button>
+        )}
         <div className={`fade-in ${theaterMode ? 'theater-mode' : ''}`}>
             {/* Reader Header */}
             <div className="reader-header">
@@ -463,17 +474,6 @@ function ReaderContent() {
                 </div>
             )}
 
-            {/* Floating scroll-to-top button */}
-            {showScrollTop && (
-                <button
-                    className="scroll-top-btn"
-                    onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                    aria-label="Scroll to top"
-                >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m18 15-6-6-6 6" /></svg>
-                </button>
-            )}
-
             {/* Chapter Navigation */}
             <div className="reader-nav">
                 {prevChapter ? (
@@ -499,6 +499,7 @@ function ReaderContent() {
                 <CommentSection chapterId={chapterId} seriesId={series.id} />
             </div>
         </div>
+        </>
     );
 }
 
