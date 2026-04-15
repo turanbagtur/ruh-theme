@@ -265,10 +265,11 @@ export default function CommentSection({ chapterId, seriesId }) {
 
     function getRankBadgeParams(rank) {
         if (!rank) return null;
-        if (rank === 1) return { class: 'asura-badge-1', label: '1' };
-        if (rank <= 10) return { class: 'asura-badge-top', label: 'T' };
-        if (rank <= 50) return { class: 'asura-badge-mid', label: 'M' };
-        return { class: 'asura-badge-base', label: 'R' };
+        if (rank === 1) return { class: 'asura-badge-1', label: '👑' };
+        if (rank <= 3) return { class: 'asura-badge-top3', label: `#${rank}` };
+        if (rank <= 10) return { class: 'asura-badge-top', label: `#${rank}` };
+        if (rank <= 50) return { class: 'asura-badge-mid', label: `#${rank}` };
+        return null; // don't show badge for low ranks
     }
 
     function toggleReplies(commentId) {

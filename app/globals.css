@@ -4379,25 +4379,35 @@ a.ann-message:hover {
   border-radius: 50%;
   object-fit: cover;
 }
+/* Rank badge — sits bottom-right of avatar, pill shape, clearly a rank not a notification */
 .asura-avatar-badge {
   position: absolute;
-  top: -4px;
-  right: -4px;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
+  bottom: -6px;
+  right: -6px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 0.6rem;
   font-weight: 900;
   color: white;
-  border: 2px solid var(--bg-main);
+  border: 2px solid var(--bg-card);
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+  line-height: 1;
 }
-.asura-badge-1 { background: #b91c1c; } /* Blood red */
-.asura-badge-top { background: #f59e0b; } /* Amber tier (replaced purple) */
-.asura-badge-mid { background: #2563eb; } /* Blue tier */
-.asura-badge-base { background: #4b5563; } /* Grey tier */
+/* Crown for #1 — slightly larger for emoji */
+.asura-badge-1 {
+  background: linear-gradient(135deg, #b91c1c, #7f1d1d);
+  font-size: 0.75rem;
+  padding: 0 3px;
+}
+.asura-badge-top3 { background: linear-gradient(135deg, #f59e0b, #d97706); }
+.asura-badge-top { background: linear-gradient(135deg, #10b981, #059669); }
+.asura-badge-mid { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
 
 .asura-comment-content {
   flex: 1;
