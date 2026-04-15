@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 const LANGUAGES = [
     // European
@@ -47,36 +47,55 @@ const LANGUAGES = [
 export default function LanguageSelector({ selectedLang, onSelect, disabled }) {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState('');
+    const [dropRight, setDropRight] = useState(false);
+    const [dropUp, setDropUp] = useState(false);
+    const containerRef = useRef(null);
+
     const current = LANGUAGES.find(l => l.code === selectedLang);
 
     const filtered = search.trim()
-        ? LANGUAGES.filter(l => l.name.toLowerCase().includes(search.toLowerCase()) || l.code.includes(search.toLowerCase()))
+        ? LANGUAGES.filter(l =>
+            l.name.toLowerCase().includes(search.toLowerCase()) ||
+            l.code.includes(search.toLowerCase())
+          )
         : LANGUAGES;
 
-    const [dropRight, setDropRight] = useState(false);
-    const [dropUp, setDropUp] = useState(false);
-
+    // Close on outside mousedown — fires BEFORE click, no race condition
     useEffect(() => {
-        function handleClickOutside(e) {
-            if (!e.target.closest('.language-selector')) setOpen(false);
+        function handleOutside(e) {
+            if (containerRef.current && !containerRef.current.contains(e.target)) {
+                setOpen(false);
+                setSearch('');
+            }
         }
-        document.addEventListener('click', handleClickOutside);
-        return () => document.removeEventListener('click', handleClickOutside);
+        document.addEventListener('mousedown', handleOutside);
+        return () => document.removeEventListener('mousedown', handleOutside);
     }, []);
 
-    function handleOpen(e) {
+    function handleToggle(e) {
+        // Stop the event from reaching parent handlers (e.g. tap zones in reader)
+        e.stopPropagation();
         if (disabled) return;
-        const rect = e.currentTarget.getBoundingClientRect();
-        const dropdownHeight = 340; // estimated max dropdown height
-        // Horizontal: anchor right if not enough room
-        setDropRight(rect.left + 230 > window.innerWidth - 16);
-        // Vertical: open upward if not enough room below
-        setDropUp(rect.bottom + dropdownHeight > window.innerHeight - 16);
-        setOpen(!open);
-        if (open) setSearch('');
+
+        if (!open) {
+            // Calculate dropdown position before opening
+            const rect = e.currentTarget.getBoundingClientRect();
+            setDropRight(rect.left + 230 > window.innerWidth - 16);
+            setDropUp(rect.bottom + 340 > window.innerHeight - 16);
+            setOpen(true);
+        } else {
+            setOpen(false);
+            setSearch('');
+        }
     }
 
-    // Build position style
+    function handleSelect(code) {
+        onSelect(code);
+        setOpen(false);
+        setSearch('');
+    }
+
+    // Position style for the dropdown
     const dropdownStyle = {};
     if (dropRight) {
         dropdownStyle.left = 'auto';
@@ -90,22 +109,38 @@ export default function LanguageSelector({ selectedLang, onSelect, disabled }) {
     }
 
     return (
-        <div className="language-selector">
+        <div className="language-selector" ref={containerRef}>
             <button
                 className={`lang-btn ${open ? 'active' : ''}`}
-                onClick={handleOpen}
+                onClick={handleToggle}
                 disabled={disabled}
                 style={{ maxWidth: 160, overflow: 'hidden' }}
+                type="button"
             >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}><circle cx="12" cy="12" r="10" /><line x1="2" y1="12" x2="22" y2="12" /><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" /></svg>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}>
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="2" y1="12" x2="22" y2="12"/>
+                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                </svg>
                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
                     {current ? `${current.flag} ${current.name}` : 'Original'}
                 </span>
-                <svg width="12" height="12" className={`chevron ${open ? 'rotated' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}><path d="m6 9 6 6 6-6" /></svg>
+                <svg
+                    width="12" height="12"
+                    className={`chevron ${open ? 'rotated' : ''}`}
+                    viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                    style={{ flexShrink: 0 }}
+                >
+                    <path d="m6 9 6 6 6-6"/>
+                </svg>
             </button>
 
             {open && (
-                <div className="lang-dropdown" style={dropdownStyle}>
+                <div
+                    className="lang-dropdown"
+                    style={dropdownStyle}
+                    onMouseDown={e => e.stopPropagation()} // prevent outside handler from firing on scroll
+                >
                     <div className="lang-dropdown-header">Translate to</div>
                     <div style={{ padding: '6px 10px' }}>
                         <input
@@ -114,7 +149,6 @@ export default function LanguageSelector({ selectedLang, onSelect, disabled }) {
                             placeholder="Search language..."
                             value={search}
                             onChange={e => setSearch(e.target.value)}
-                            onClick={e => e.stopPropagation()}
                             autoFocus
                             style={{ padding: '6px 10px', fontSize: '0.82rem', height: 32 }}
                         />
@@ -122,18 +156,22 @@ export default function LanguageSelector({ selectedLang, onSelect, disabled }) {
                     <div style={{ maxHeight: 260, overflowY: 'auto' }}>
                         {!search && (
                             <button
+                                type="button"
                                 className={`lang-option ${!selectedLang ? 'selected' : ''}`}
-                                onClick={() => { onSelect(''); setOpen(false); }}
+                                onClick={() => handleSelect('')}
                             >
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                                </svg>
                                 Original
                             </button>
                         )}
                         {filtered.map(lang => (
                             <button
                                 key={lang.code}
+                                type="button"
                                 className={`lang-option ${selectedLang === lang.code ? 'selected' : ''}`}
-                                onClick={() => { onSelect(lang.code); setOpen(false); setSearch(''); }}
+                                onClick={() => handleSelect(lang.code)}
                             >
                                 <span>{lang.flag}</span>
                                 {lang.name}

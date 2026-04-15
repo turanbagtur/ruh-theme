@@ -253,6 +253,7 @@ function ReaderContent() {
 
     const navigateTo = useCallback((chapter) => {
         if (!chapter) return;
+        window.scrollTo({ top: 0, behavior: 'instant' });
         router.push(buildReadUrl(chapter));
     }, [selectedLang, router]); // eslint-disable-line
 
