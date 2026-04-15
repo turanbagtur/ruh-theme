@@ -71,10 +71,7 @@ export async function GET(request) {
             genres: JSON.parse(s.genres || '[]'),
         }));
 
-        const totalChapters = db.prepare('SELECT COUNT(*) as count FROM chapters').get().count;
-        const totalLanguages = db.prepare('SELECT COUNT(DISTINCT language_code) as count FROM translations').get().count;
-
-        return NextResponse.json({ series: withParsedGenres, totalChapters, totalLanguages });
+        return NextResponse.json({ series: withParsedGenres });
     } catch (error) {
         console.error('GET /api/series error:', error);
         return NextResponse.json({ error: 'Failed to fetch series' }, { status: 500 });

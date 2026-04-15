@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 
-export const dynamic = 'force-dynamic';
+// Revalidate every 2 minutes — latest updates should refresh frequently but not every request
+export const revalidate = 120;
 
 export async function GET(request) {
     try {

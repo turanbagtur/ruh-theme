@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 
+// Editor pick changes once per day — cache for 1 hour
+export const revalidate = 3600;
+
 export async function GET(request) {
     try {
         const db = getDb();

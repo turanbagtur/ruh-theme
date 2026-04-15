@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 
-export const dynamic = 'force-dynamic';
+// Revalidate every 5 minutes — trending doesn't need to be real-time
+export const revalidate = 300;
 
 export async function GET(request) {
     try {

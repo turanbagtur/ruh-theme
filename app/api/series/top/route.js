@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 
-export const dynamic = 'force-dynamic';
+// Revalidate every 5 minutes — ranking doesn't need real-time updates
+export const revalidate = 300;
 
 export async function GET(request) {
     try {
