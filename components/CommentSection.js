@@ -265,11 +265,11 @@ export default function CommentSection({ chapterId, seriesId }) {
 
     function getRankBadgeParams(rank) {
         if (!rank) return null;
-        if (rank === 1) return { class: 'asura-badge-1', label: '👑' };
-        if (rank <= 3) return { class: 'asura-badge-top3', label: `#${rank}` };
-        if (rank <= 10) return { class: 'asura-badge-top', label: `#${rank}` };
-        if (rank <= 50) return { class: 'asura-badge-mid', label: `#${rank}` };
-        return null; // don't show badge for low ranks
+        if (rank === 1) return { class: 'asura-badge-1', type: 'crown' };
+        if (rank <= 3) return { class: 'asura-badge-top3', type: 'text', label: `#${rank}` };
+        if (rank <= 10) return { class: 'asura-badge-top', type: 'text', label: `#${rank}` };
+        if (rank <= 50) return { class: 'asura-badge-mid', type: 'text', label: `#${rank}` };
+        return null;
     }
 
     function toggleReplies(commentId) {
@@ -300,7 +300,19 @@ export default function CommentSection({ chapterId, seriesId }) {
                         </div>
                     )}
                     {/* Render Rank Badge if present */}
-                    {badge && <div className={`asura-avatar-badge ${badge.class}`}>{badge.label}</div>}
+                    {badge && (
+                        <div className={`asura-avatar-badge ${badge.class}`}>
+                            {badge.type === 'crown' ? (
+                                /* Crown SVG (Lucide-style) */
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                                    <path d="M2 19h20l-2-10-5 5-3-8-3 8-5-5L2 19z"/>
+                                    <rect x="2" y="20" width="20" height="2" rx="1"/>
+                                </svg>
+                            ) : (
+                                <span>{badge.label}</span>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 <div className="asura-comment-content">

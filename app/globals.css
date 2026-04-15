@@ -4399,15 +4399,19 @@ a.ann-message:hover {
   box-shadow: 0 2px 6px rgba(0,0,0,0.5);
   line-height: 1;
 }
-/* Crown for #1 — slightly larger for emoji */
+/* Crown for #1 — circle with SVG icon */
 .asura-badge-1 {
   background: linear-gradient(135deg, #b91c1c, #7f1d1d);
-  font-size: 0.75rem;
-  padding: 0 3px;
+  width: 20px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0;
+  border-radius: 50%;
+  color: #fcd34d;
 }
 .asura-badge-top3 { background: linear-gradient(135deg, #f59e0b, #d97706); }
-.asura-badge-top { background: linear-gradient(135deg, #10b981, #059669); }
-.asura-badge-mid { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+.asura-badge-top  { background: linear-gradient(135deg, #10b981, #059669); }
+.asura-badge-mid  { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
 
 .asura-comment-content {
   flex: 1;
