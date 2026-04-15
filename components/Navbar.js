@@ -48,10 +48,10 @@ export default function Navbar() {
         return () => document.removeEventListener('mousedown', handleClick);
     }, []);
 
-    // Close mobile menu when user state changes (login/logout)
+    // Close mobile menu on logout; never force-close user dropdown on refreshUser()
     useEffect(() => {
         setMobileMenuOpen(false);
-        setUserMenuOpen(false);
+        if (!user) setUserMenuOpen(false);
     }, [user]);
 
     async function markAllRead() {
