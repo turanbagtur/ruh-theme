@@ -67,10 +67,10 @@ export async function POST(request) {
 
         // ── fetch-info: preview series info from URL without saving ──────────────
         if (action === 'fetch-info') {
-            const { url } = body;
+            const { url, language } = body;
             if (!url) return NextResponse.json({ error: 'URL is required' }, { status: 400 });
 
-            const result = await scrapeSeriesInfo(url);
+            const result = await scrapeSeriesInfo(url, { language: language || 'en' });
             return NextResponse.json({
                 success: true,
                 site: detectSiteType(url),
@@ -83,15 +83,15 @@ export async function POST(request) {
 
         // ── add-source: attach a source URL to an existing series ─────────────────
         if (action === 'add-source') {
-            const { series_id, url, auto_sync = 1 } = body;
+            const { series_id, url, auto_sync = 1, language = 'en' } = body;
             if (!series_id || !url) return NextResponse.json({ error: 'series_id and url required' }, { status: 400 });
 
             const existing = db.prepare('SELECT id FROM scraper_sources WHERE series_id = ? AND source_url = ?').get(series_id, url);
             if (existing) return NextResponse.json({ error: 'Source already added for this series' }, { status: 409 });
 
             const result = db.prepare(
-                'INSERT INTO scraper_sources (series_id, source_url, source_site, auto_sync) VALUES (?, ?, ?, ?)'
-            ).run(series_id, url, detectSiteType(url), auto_sync ? 1 : 0);
+                'INSERT INTO scraper_sources (series_id, source_url, source_site, auto_sync, language) VALUES (?, ?, ?, ?, ?)'
+            ).run(series_id, url, detectSiteType(url), auto_sync ? 1 : 0, language || 'en');
 
             return NextResponse.json({ success: true, source_id: result.lastInsertRowid, message: 'Source added' });
         }
@@ -106,7 +106,7 @@ export async function POST(request) {
 
         // ── import-chapters: scrape and stage pending chapters for a series ───────
         if (action === 'import-chapters') {
-            const { series_id, url, download_images = false, publish_immediately = false } = body;
+            const { series_id, url, download_images = false, publish_immediately = false, language = 'en' } = body;
             if (!series_id || !url) return NextResponse.json({ error: 'series_id and url required' }, { status: 400 });
 
             // Create job record
@@ -116,7 +116,7 @@ export async function POST(request) {
             const jobId = jobResult.lastInsertRowid;
 
             try {
-                const { meta, chapters } = await scrapeSeriesInfo(url);
+                const { meta, chapters } = await scrapeSeriesInfo(url, { language: language || 'en' });
 
                 // Find which chapters already exist in DB for this series
                 const existingChapters = db.prepare('SELECT chapter_number FROM chapters WHERE series_id = ?').all(series_id);
@@ -262,7 +262,7 @@ export async function POST(request) {
 
             for (const src of sources) {
                 try {
-                    const { chapters } = await scrapeSeriesInfo(src.source_url);
+                    const { chapters } = await scrapeSeriesInfo(src.source_url, { language: src.language || 'en' });
                     const existingChapters = db.prepare('SELECT chapter_number FROM chapters WHERE series_id = ?').all(src.series_id);
                     const existingNums = new Set(existingChapters.map(c => c.chapter_number));
                     const newChaps = chapters.filter(c => !existingNums.has(c.chapter_number));
@@ -290,10 +290,10 @@ export async function POST(request) {
 
         // ── create-series-from-scrape: scrape + create series + stage chapters ───
         if (action === 'create-series-from-scrape') {
-            const { url, publish_series = false } = body;
+            const { url, publish_series = false, language = 'en' } = body;
             if (!url) return NextResponse.json({ error: 'url required' }, { status: 400 });
 
-            const { meta, chapters } = await scrapeSeriesInfo(url);
+            const { meta, chapters } = await scrapeSeriesInfo(url, { language: language || 'en' });
 
             // Download cover
             let coverUrl = '/demo/cover1.jpg';
@@ -310,8 +310,8 @@ export async function POST(request) {
             const seriesId = seriesResult.lastInsertRowid;
 
             // Add source
-            db.prepare('INSERT INTO scraper_sources (series_id, source_url, source_site, auto_sync) VALUES (?, ?, ?, 1)')
-                .run(seriesId, url, detectSiteType(url));
+            db.prepare('INSERT INTO scraper_sources (series_id, source_url, source_site, auto_sync, language) VALUES (?, ?, ?, 1, ?)')
+                .run(seriesId, url, detectSiteType(url), language || 'en');
 
             // Stage all chapters
             for (const ch of chapters) {

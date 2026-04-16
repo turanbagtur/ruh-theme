@@ -110,6 +110,7 @@ export default function AdminPanelPage() {
 
     // ── Scraper state ────────────────────────────────────────────────────────
     const [scraperUrl, setScraperUrl] = useState('');
+    const [scraperLang, setScraperLang] = useState('en');
     const [scraperFetchLoading, setScraperFetchLoading] = useState(false);
     const [scraperFetchResult, setScraperFetchResult] = useState(null);
     const [scraperImporting, setScraperImporting] = useState(false);
@@ -126,6 +127,7 @@ export default function AdminPanelPage() {
     const [allScraperSourcesLoading, setAllScraperSourcesLoading] = useState(false);
     // Create series from scratch via scrape
     const [scrapeNewUrl, setScrapeNewUrl] = useState('');
+    const [scrapeNewLang, setScrapeNewLang] = useState('en');
     const [scrapeNewLoading, setScrapeNewLoading] = useState(false);
     const [scrapeNewPreview, setScrapeNewPreview] = useState(null);
 
@@ -463,7 +465,7 @@ export default function AdminPanelPage() {
             const res = await authFetch('/api/admin/scrape', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'fetch-info', url: scraperUrl.trim() }),
+                body: JSON.stringify({ action: 'fetch-info', url: scraperUrl.trim(), language: scraperLang }),
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error);
@@ -477,7 +479,7 @@ export default function AdminPanelPage() {
             const res = await authFetch('/api/admin/scrape', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'add-source', series_id: seriesId, url }),
+                body: JSON.stringify({ action: 'add-source', series_id: seriesId, url, language: scraperLang }),
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error);
@@ -510,6 +512,7 @@ export default function AdminPanelPage() {
                     action: 'import-chapters',
                     series_id: seriesId,
                     url,
+                    language: scraperLang,
                     publish_immediately: scraperPublishMode === 'publish',
                 }),
             });
@@ -604,7 +607,7 @@ export default function AdminPanelPage() {
             const res = await authFetch('/api/admin/scrape', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'create-series-from-scrape', url: scrapeNewUrl.trim(), publish_series: false }),
+                body: JSON.stringify({ action: 'create-series-from-scrape', url: scrapeNewUrl.trim(), language: scrapeNewLang, publish_series: false }),
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error);
@@ -990,6 +993,27 @@ export default function AdminPanelPage() {
                                         onChange={e => { setScraperUrl(e.target.value); setScraperFetchResult(null); }}
                                         style={{ flex: 1, fontSize: '0.8rem' }}
                                     />
+                                    <select
+                                        value={scraperLang}
+                                        onChange={e => { setScraperLang(e.target.value); setScraperFetchResult(null); }}
+                                        title="Language (MangaDex / Comick only)"
+                                        style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: 6, padding: '4px 8px', fontSize: '0.78rem', flexShrink: 0 }}>
+                                        <option value="en">🇬🇧 English</option>
+                                        <option value="tr">🇹🇷 Turkish</option>
+                                        <option value="pt-br">🇧🇷 Portuguese (BR)</option>
+                                        <option value="es">🇪🇸 Spanish</option>
+                                        <option value="es-la">🇲🇽 Spanish (LA)</option>
+                                        <option value="fr">🇫🇷 French</option>
+                                        <option value="de">🇩🇪 German</option>
+                                        <option value="it">🇮🇹 Italian</option>
+                                        <option value="id">🇮🇩 Indonesian</option>
+                                        <option value="ru">🇷🇺 Russian</option>
+                                        <option value="ar">🇸🇦 Arabic</option>
+                                        <option value="ja">🇯🇵 Japanese</option>
+                                        <option value="ko">🇰🇷 Korean</option>
+                                        <option value="zh">🇨🇳 Chinese (Simp.)</option>
+                                        <option value="zh-hk">🇹🇼 Chinese (Trad.)</option>
+                                    </select>
                                     <button className="btn btn-ghost btn-sm" onClick={scraperFetch} disabled={scraperFetchLoading || !scraperUrl}>
                                         {scraperFetchLoading ? <span className="spinner" style={{ width: 12, height: 12 }} /> : 'Preview'}
                                     </button>
@@ -1483,6 +1507,27 @@ export default function AdminPanelPage() {
                                     onChange={e => { setScrapeNewUrl(e.target.value); setScrapeNewPreview(null); }}
                                     style={{ flex: 1 }}
                                 />
+                                <select
+                                    value={scrapeNewLang}
+                                    onChange={e => { setScrapeNewLang(e.target.value); setScrapeNewPreview(null); }}
+                                    title="Language (MangaDex / Comick only)"
+                                    style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: 6, padding: '4px 8px', fontSize: '0.78rem', flexShrink: 0 }}>
+                                    <option value="en">🇬🇧 English</option>
+                                    <option value="tr">🇹🇷 Turkish</option>
+                                    <option value="pt-br">🇧🇷 Portuguese (BR)</option>
+                                    <option value="es">🇪🇸 Spanish</option>
+                                    <option value="es-la">🇲🇽 Spanish (LA)</option>
+                                    <option value="fr">🇫🇷 French</option>
+                                    <option value="de">🇩🇪 German</option>
+                                    <option value="it">🇮🇹 Italian</option>
+                                    <option value="id">🇮🇩 Indonesian</option>
+                                    <option value="ru">🇷🇺 Russian</option>
+                                    <option value="ar">🇸🇦 Arabic</option>
+                                    <option value="ja">🇯🇵 Japanese</option>
+                                    <option value="ko">🇰🇷 Korean</option>
+                                    <option value="zh">🇨🇳 Chinese (Simp.)</option>
+                                    <option value="zh-hk">🇹🇼 Chinese (Trad.)</option>
+                                </select>
                                 <button className="btn btn-ghost btn-sm" disabled={scrapeNewLoading || !scrapeNewUrl}
                                     onClick={async () => {
                                         if (!scrapeNewUrl.trim()) return;
@@ -1491,7 +1536,7 @@ export default function AdminPanelPage() {
                                             const res = await authFetch('/api/admin/scrape', {
                                                 method: 'POST',
                                                 headers: { 'Content-Type': 'application/json' },
-                                                body: JSON.stringify({ action: 'fetch-info', url: scrapeNewUrl.trim() }),
+                                                body: JSON.stringify({ action: 'fetch-info', url: scrapeNewUrl.trim(), language: scrapeNewLang }),
                                             });
                                             const data = await res.json();
                                             if (!res.ok) throw new Error(data.error);
