@@ -1,5 +1,6 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/AuthProvider';
 
@@ -61,6 +62,8 @@ export default function AdminPanelPage() {
     const [confirmModal, setConfirmModal] = useState(null);
     const [submitting, setSubmitting] = useState(false);
     const [previewImage, setPreviewImage] = useState(null); // { src, title }
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => { setMounted(true); }, []);
 
     // Media management
     const [mediaFiles, setMediaFiles] = useState([]);
@@ -1799,8 +1802,8 @@ export default function AdminPanelPage() {
                     </div>
                 )}
 
-                {/* ═══════════════ CONFIRM MODAL ═══════════════ */}
-                {confirmModal && (
+                {/* ═══════════════ CONFIRM MODAL (Portal) ═══════════════ */}
+                {mounted && confirmModal && createPortal(
                     <div className="modal-overlay" onClick={() => setConfirmModal(null)}>
                         <div className="modal" onClick={e => e.stopPropagation()}>
                             <h3><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg> Confirm</h3>
@@ -1810,11 +1813,12 @@ export default function AdminPanelPage() {
                                 <button className="btn btn-danger btn-sm" onClick={confirmAction}>Confirm</button>
                             </div>
                         </div>
-                    </div>
+                    </div>,
+                    document.body
                 )}
 
-                {/* ═══════════════ IMAGE PREVIEW MODAL ═══════════════ */}
-                {previewImage && (
+                {/* ═══════════════ IMAGE PREVIEW MODAL (Portal) ═══════════════ */}
+                {mounted && previewImage && createPortal(
                     <div className="modal-overlay" onClick={() => setPreviewImage(null)} style={{ zIndex: 1100 }}>
                         <div style={{ position: 'relative', maxWidth: '90vw', maxHeight: '90vh', display: 'flex', flexDirection: 'column', alignItems: 'center' }} onClick={e => e.stopPropagation()}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', background: 'rgba(0,0,0,0.8)', padding: '10px 16px', borderRadius: '8px 8px 0 0' }}>
@@ -1823,7 +1827,8 @@ export default function AdminPanelPage() {
                             </div>
                             <img src={previewImage.src} alt={previewImage.title} style={{ maxWidth: '90vw', maxHeight: 'calc(90vh - 50px)', objectFit: 'contain', borderRadius: '0 0 8px 8px', display: 'block' }} />
                         </div>
-                    </div>
+                    </div>,
+                    document.body
                 )}
             </main>
         </div>
