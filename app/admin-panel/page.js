@@ -24,10 +24,16 @@ const EyeIcon = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none
 const ImageIcon = () => <svg width={I.w} height={I.h} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>;
 const MegaphoneIcon = () => <svg width={I.w} height={I.h} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 6h4l5-4v14l-5-4h-4v7h-2z" /><path d="M4 8h2v8H4z" /></svg>;
 
+const DownloadIcon = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>;
+const SyncIcon = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>;
+const LinkIcon = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>;
+const CheckIcon = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>;
+
 const NAVS = [
     { id: 'announcements', label: 'Announcements', icon: MegaphoneIcon },
     { id: 'overview', label: 'Dashboard', icon: DashIcon },
     { id: 'series', label: 'Series', icon: BookIcon },
+    { id: 'scraper', label: 'Scraper', icon: DownloadIcon },
     { id: 'media', label: 'Media', icon: ImageIcon },
     { id: 'api-key', label: 'API Key', icon: KeyIcon },
     { id: 'users', label: 'Users', icon: UsersIcon },
@@ -101,6 +107,27 @@ export default function AdminPanelPage() {
     // Bulk chapter upload
     const [bulkFiles, setBulkFiles] = useState(null);
     const [bulkStatus, setBulkStatus] = useState('');
+
+    // ── Scraper state ────────────────────────────────────────────────────────
+    const [scraperUrl, setScraperUrl] = useState('');
+    const [scraperFetchLoading, setScraperFetchLoading] = useState(false);
+    const [scraperFetchResult, setScraperFetchResult] = useState(null);
+    const [scraperImporting, setScraperImporting] = useState(false);
+    const [scraperPublishMode, setScraperPublishMode] = useState('stage'); // 'stage' | 'publish'
+    const [scraperSources, setScraperSources] = useState([]);
+    const [scraperPending, setScraperPending] = useState([]);
+    const [scraperJobs, setScraperJobs] = useState([]);
+    const [scraperSourcesLoading, setScraperSourcesLoading] = useState(false);
+    const [scraperSelectedPending, setScraperSelectedPending] = useState([]);
+    const [scraperPublishing, setScraperPublishing] = useState(false);
+    const [scraperSyncLoading, setScraperSyncLoading] = useState(false);
+    // For the global Scraper tab
+    const [allScraperSources, setAllScraperSources] = useState([]);
+    const [allScraperSourcesLoading, setAllScraperSourcesLoading] = useState(false);
+    // Create series from scratch via scrape
+    const [scrapeNewUrl, setScrapeNewUrl] = useState('');
+    const [scrapeNewLoading, setScrapeNewLoading] = useState(false);
+    const [scrapeNewPreview, setScrapeNewPreview] = useState(null);
 
     // View pages panel
     const [viewPagesChapterId, setViewPagesChapterId] = useState(null);
@@ -262,6 +289,8 @@ export default function AdminPanelPage() {
             setSubView('detail');
             setEditMode(false);
             populateForm(d.series);
+            // Load scraper data for this series
+            loadScraperData(id);
         } catch (e) { show(e.message, 'error'); }
     }
 
@@ -422,6 +451,170 @@ export default function AdminPanelPage() {
             openSeriesDetail(detailSeries.id); fetchStats();
         } catch (e) { show(e.message, 'error'); }
         finally { setSubmitting(false); }
+    }
+
+    // ── Scraper helpers ──────────────────────────────────────────────────────
+
+    async function scraperFetch() {
+        if (!scraperUrl.trim()) return show('Enter a URL first', 'error');
+        setScraperFetchLoading(true);
+        setScraperFetchResult(null);
+        try {
+            const res = await authFetch('/api/admin/scrape', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'fetch-info', url: scraperUrl.trim() }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+            setScraperFetchResult(data);
+        } catch (e) { show(e.message, 'error'); }
+        finally { setScraperFetchLoading(false); }
+    }
+
+    async function scraperAddSource(seriesId, url) {
+        try {
+            const res = await authFetch('/api/admin/scrape', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'add-source', series_id: seriesId, url }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+            show('Source linked ✓');
+            await loadScraperData(seriesId);
+        } catch (e) { show(e.message, 'error'); }
+    }
+
+    async function scraperDeleteSource(sourceId, seriesId) {
+        try {
+            const res = await authFetch('/api/admin/scrape', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'delete-source', source_id: sourceId }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+            show('Source removed');
+            await loadScraperData(seriesId);
+        } catch (e) { show(e.message, 'error'); }
+    }
+
+    async function scraperImport(seriesId, url) {
+        setScraperImporting(true);
+        try {
+            const res = await authFetch('/api/admin/scrape', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'import-chapters',
+                    series_id: seriesId,
+                    url,
+                    publish_immediately: scraperPublishMode === 'publish',
+                }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+            show(data.message);
+            await loadScraperData(seriesId);
+            fetchStats();
+        } catch (e) { show(e.message, 'error'); }
+        finally { setScraperImporting(false); }
+    }
+
+    async function scraperPublishPending(pendingIds, seriesId) {
+        setScraperPublishing(true);
+        try {
+            const res = await authFetch('/api/admin/scrape', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'publish-pending', pending_ids: pendingIds }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+            show(data.message);
+            setScraperSelectedPending([]);
+            await loadScraperData(seriesId);
+            fetchStats();
+        } catch (e) { show(e.message, 'error'); }
+        finally { setScraperPublishing(false); }
+    }
+
+    async function scraperPublishAllPending(seriesId) {
+        setScraperPublishing(true);
+        try {
+            const res = await authFetch('/api/admin/scrape', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'publish-pending', series_id: seriesId }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+            show(data.message);
+            setScraperSelectedPending([]);
+            await loadScraperData(seriesId);
+            fetchStats();
+        } catch (e) { show(e.message, 'error'); }
+        finally { setScraperPublishing(false); }
+    }
+
+    async function loadScraperData(seriesId) {
+        setScraperSourcesLoading(true);
+        try {
+            const res = await authFetch(`/api/admin/scrape?seriesId=${seriesId}`);
+            const data = await res.json();
+            setScraperSources(data.sources || []);
+            setScraperPending(data.pending || []);
+            setScraperJobs(data.jobs || []);
+        } catch {}
+        finally { setScraperSourcesLoading(false); }
+    }
+
+    async function loadAllScraperSources() {
+        setAllScraperSourcesLoading(true);
+        try {
+            const res = await authFetch('/api/admin/scrape?action=all');
+            const data = await res.json();
+            setAllScraperSources(data.sources || []);
+        } catch {}
+        finally { setAllScraperSourcesLoading(false); }
+    }
+
+    async function scraperSyncAll() {
+        setScraperSyncLoading(true);
+        try {
+            const res = await authFetch('/api/admin/scrape', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'sync-all' }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+            show(`Sync complete: ${data.total_new} new chapters found across ${data.synced} sources`);
+            await loadAllScraperSources();
+            fetchStats();
+        } catch (e) { show(e.message, 'error'); }
+        finally { setScraperSyncLoading(false); }
+    }
+
+    async function handleCreateSeriesFromScrape() {
+        if (!scrapeNewUrl.trim()) return show('Enter a URL', 'error');
+        setScrapeNewLoading(true);
+        try {
+            const res = await authFetch('/api/admin/scrape', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'create-series-from-scrape', url: scrapeNewUrl.trim(), publish_series: false }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+            show(`"${data.title}" created with ${data.chapters_staged} chapters staged`);
+            setScrapeNewUrl('');
+            setScrapeNewPreview(null);
+            fetchStats();
+            await loadAllScraperSources();
+        } catch (e) { show(e.message, 'error'); }
+        finally { setScrapeNewLoading(false); }
     }
 
     if (authLoading || loading) return <div className="page-loading"><div className="spinner" /></div>;
@@ -741,15 +934,15 @@ export default function AdminPanelPage() {
                                     <UploadIcon /> Bulk Upload Chapters
                                 </h4>
                                 <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 12 }}>
-                                    Select a parent folder containing subfolders for each chapter (e.g. MangaFolder / Chapter 1 / 01.jpg). 
+                                    Select a parent folder containing subfolders for each chapter (e.g. MangaFolder / Chapter 1 / 01.jpg).
                                 </p>
                                 <form onSubmit={handleBulkUpload} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                                    <input 
-                                        type="file" 
+                                    <input
+                                        type="file"
                                         id="bulk-folder-input"
-                                        webkitdirectory="" 
-                                        multiple 
-                                        onChange={e => setBulkFiles(e.target.files)} 
+                                        webkitdirectory=""
+                                        multiple
+                                        onChange={e => setBulkFiles(e.target.files)}
                                         style={{ fontSize: '0.75rem', maxWidth: '300px' }}
                                     />
                                     <button type="submit" className="btn btn-primary btn-sm" disabled={submitting || !bulkFiles}>
@@ -757,6 +950,116 @@ export default function AdminPanelPage() {
                                     </button>
                                     {bulkStatus && <span style={{ fontSize: '0.75rem', color: 'var(--accent-light)' }}>{bulkStatus}</span>}
                                 </form>
+                            </div>
+
+                            {/* ── Auto Import (Scraper) Section ── */}
+                            <div style={{ padding: 14, background: 'rgba(99,102,241,0.06)', borderRadius: 8, marginBottom: 16, border: '1px solid rgba(99,102,241,0.25)' }}>
+                                <h4 style={{ margin: '0 0 10px 0', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 6, color: 'var(--accent-light)' }}>
+                                    <DownloadIcon /> Auto Import (Scraper)
+                                    {scraperSources.length > 0 && <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: 50, background: 'rgba(99,102,241,0.2)', color: 'var(--accent-light)' }}>
+                                        {scraperSources.length} source{scraperSources.length !== 1 ? 's' : ''}
+                                    </span>}
+                                </h4>
+
+                                {/* Existing sources */}
+                                {scraperSources.map(src => (
+                                    <div key={src.id} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', padding: '8px 10px', background: 'var(--bg-tertiary)', borderRadius: 6 }}>
+                                        <span style={{ fontSize: '0.72rem', padding: '2px 7px', borderRadius: 4, background: 'rgba(99,102,241,0.15)', color: 'var(--accent-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{src.source_site}</span>
+                                        <span style={{ fontSize: '0.78rem', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-secondary)' }} title={src.source_url}>{src.source_url}</span>
+                                        {src.last_checked && <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>checked {new Date(src.last_checked).toLocaleDateString()}</span>}
+                                        {src.last_chapter_found > 0 && <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>last: ch.{src.last_chapter_found}</span>}
+                                        <button className="btn btn-primary btn-sm" style={{ fontSize: '0.72rem', whiteSpace: 'nowrap' }}
+                                            disabled={scraperImporting}
+                                            onClick={() => scraperImport(detailSeries.id, src.source_url)}>
+                                            {scraperImporting ? <span className="spinner" style={{ width: 10, height: 10 }} /> : <><SyncIcon /> Check New</>}
+                                        </button>
+                                        <button className="btn btn-danger btn-sm" style={{ fontSize: '0.7rem' }}
+                                            onClick={() => setConfirmModal({ text: 'Remove this scraper source?', action: async () => { await scraperDeleteSource(src.id, detailSeries.id); show('Source removed'); } })}>
+                                            <TrashIcon />
+                                        </button>
+                                    </div>
+                                ))}
+
+                                {/* Add new source */}
+                                <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+                                    <input
+                                        type="url"
+                                        className="form-input"
+                                        placeholder="Paste series URL (MangaDex, Comick, etc.)"
+                                        value={scraperUrl}
+                                        onChange={e => { setScraperUrl(e.target.value); setScraperFetchResult(null); }}
+                                        style={{ flex: 1, fontSize: '0.8rem' }}
+                                    />
+                                    <button className="btn btn-ghost btn-sm" onClick={scraperFetch} disabled={scraperFetchLoading || !scraperUrl}>
+                                        {scraperFetchLoading ? <span className="spinner" style={{ width: 12, height: 12 }} /> : 'Preview'}
+                                    </button>
+                                </div>
+
+                                {/* Preview result */}
+                                {scraperFetchResult && (
+                                    <div style={{ padding: '10px 12px', background: 'var(--bg-secondary)', borderRadius: 6, marginBottom: 10, fontSize: '0.8rem' }}>
+                                        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6, flexWrap: 'wrap' }}>
+                                            <strong style={{ color: 'var(--accent-light)' }}>{scraperFetchResult.meta?.title}</strong>
+                                            <span style={{ fontSize: '0.7rem', padding: '2px 7px', borderRadius: 4, background: 'rgba(34,197,94,0.15)', color: '#22c55e' }}>{scraperFetchResult.site}</span>
+                                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{scraperFetchResult.chapters_count} chapters found</span>
+                                        </div>
+                                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+                                            <select value={scraperPublishMode} onChange={e => setScraperPublishMode(e.target.value)}
+                                                style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: 6, padding: '4px 8px', fontSize: '0.78rem' }}>
+                                                <option value="stage">Stage for review (publish manually)</option>
+                                                <option value="publish">Download &amp; publish immediately</option>
+                                            </select>
+                                        </div>
+                                        <div style={{ display: 'flex', gap: 6 }}>
+                                            <button className="btn btn-primary btn-sm" style={{ fontSize: '0.78rem' }}
+                                                onClick={async () => { await scraperAddSource(detailSeries.id, scraperUrl); await scraperImport(detailSeries.id, scraperUrl); setScraperUrl(''); setScraperFetchResult(null); }}
+                                                disabled={scraperImporting}>
+                                                {scraperImporting ? 'Importing...' : `Link & Import ${scraperFetchResult.chapters_count} Chapters`}
+                                            </button>
+                                            <button className="btn btn-ghost btn-sm" style={{ fontSize: '0.78rem' }} onClick={() => setScraperFetchResult(null)}>Cancel</button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Pending chapters list */}
+                                {scraperPending.filter(p => p.status === 'pending').length > 0 && (
+                                    <div style={{ marginTop: 10 }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                                                {scraperPending.filter(p => p.status === 'pending').length} chapters pending review
+                                            </span>
+                                            <div style={{ display: 'flex', gap: 6 }}>
+                                                {scraperSelectedPending.length > 0 && (
+                                                    <button className="btn btn-primary btn-sm" style={{ fontSize: '0.72rem' }}
+                                                        disabled={scraperPublishing}
+                                                        onClick={() => scraperPublishPending(scraperSelectedPending, detailSeries.id)}>
+                                                        {scraperPublishing ? 'Publishing...' : `Publish Selected (${scraperSelectedPending.length})`}
+                                                    </button>
+                                                )}
+                                                <button className="btn btn-primary btn-sm" style={{ fontSize: '0.72rem', background: 'var(--success)' }}
+                                                    disabled={scraperPublishing}
+                                                    onClick={() => scraperPublishAllPending(detailSeries.id)}>
+                                                    {scraperPublishing ? 'Publishing...' : 'Publish All'}
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div style={{ maxHeight: 200, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                            {scraperPending.filter(p => p.status === 'pending').map(p => (
+                                                <label key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 8px', background: 'var(--bg-tertiary)', borderRadius: 5, cursor: 'pointer', fontSize: '0.78rem' }}>
+                                                    <input type="checkbox"
+                                                        checked={scraperSelectedPending.includes(p.id)}
+                                                        onChange={e => {
+                                                            if (e.target.checked) setScraperSelectedPending(prev => [...prev, p.id]);
+                                                            else setScraperSelectedPending(prev => prev.filter(id => id !== p.id));
+                                                        }}
+                                                        style={{ width: 14, height: 14 }} />
+                                                    <span style={{ color: 'var(--accent-light)', fontWeight: 700, minWidth: 40 }}>Ch.{p.chapter_number}</span>
+                                                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-secondary)' }}>{p.chapter_title}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             {detailChapters.length === 0 ? (
@@ -1143,6 +1446,154 @@ export default function AdminPanelPage() {
                                 )}
                             </div>
                         )}
+                    </>
+                )}
+
+                {/* ═══════════════ SCRAPER ═══════════════ */}
+                {tab === 'scraper' && (
+                    <>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
+                            <h2 style={{ fontSize: '1.2rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
+                                <DownloadIcon /> Scraper
+                            </h2>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                                <button className="btn btn-ghost btn-sm" onClick={loadAllScraperSources} disabled={allScraperSourcesLoading}>
+                                    {allScraperSourcesLoading ? 'Loading...' : <><SyncIcon /> Refresh</>}
+                                </button>
+                                <button className="btn btn-primary btn-sm" onClick={scraperSyncAll} disabled={scraperSyncLoading}>
+                                    {scraperSyncLoading ? 'Syncing...' : <><SyncIcon /> Sync All Sources</>}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Create new series from URL */}
+                        <div className="admin-card" style={{ marginBottom: 20 }}>
+                            <h3 style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 0 }}>
+                                <LinkIcon /> Import New Series from URL
+                            </h3>
+                            <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: 14 }}>
+                                Paste a series URL from MangaDex, Comick.io, or any manga site. The scraper will fetch series info, cover, and stage all chapters for review.
+                            </p>
+                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+                                <input
+                                    type="url"
+                                    className="form-input"
+                                    placeholder="https://mangadex.org/title/... or https://comick.io/comic/..."
+                                    value={scrapeNewUrl}
+                                    onChange={e => { setScrapeNewUrl(e.target.value); setScrapeNewPreview(null); }}
+                                    style={{ flex: 1 }}
+                                />
+                                <button className="btn btn-ghost btn-sm" disabled={scrapeNewLoading || !scrapeNewUrl}
+                                    onClick={async () => {
+                                        if (!scrapeNewUrl.trim()) return;
+                                        setScrapeNewLoading(true);
+                                        try {
+                                            const res = await authFetch('/api/admin/scrape', {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({ action: 'fetch-info', url: scrapeNewUrl.trim() }),
+                                            });
+                                            const data = await res.json();
+                                            if (!res.ok) throw new Error(data.error);
+                                            setScrapeNewPreview(data);
+                                        } catch (e) { show(e.message, 'error'); }
+                                        finally { setScrapeNewLoading(false); }
+                                    }}>
+                                    {scrapeNewLoading ? <span className="spinner" style={{ width: 12, height: 12 }} /> : 'Preview'}
+                                </button>
+                            </div>
+                            {scrapeNewPreview && (
+                                <div style={{ padding: '12px 14px', background: 'var(--bg-tertiary)', borderRadius: 8, marginTop: 10 }}>
+                                    <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                                        {scrapeNewPreview.meta?.coverUrl && (
+                                            <img src={scrapeNewPreview.meta.coverUrl} alt="" style={{ width: 56, height: 80, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />
+                                        )}
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 6 }}>
+                                                <strong style={{ fontSize: '1rem' }}>{scrapeNewPreview.meta?.title}</strong>
+                                                <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: 4, background: 'rgba(34,197,94,0.15)', color: '#22c55e' }}>{scrapeNewPreview.site}</span>
+                                                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{scrapeNewPreview.chapters_count} chapters</span>
+                                            </div>
+                                            {scrapeNewPreview.meta?.author && <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 4 }}>Author: {scrapeNewPreview.meta.author}</div>}
+                                            {scrapeNewPreview.meta?.genres?.length > 0 && (
+                                                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 8 }}>
+                                                    {scrapeNewPreview.meta.genres.slice(0, 6).map(g => <span key={g} className="genre-tag" style={{ fontSize: '0.68rem', padding: '2px 7px' }}>{g}</span>)}
+                                                </div>
+                                            )}
+                                            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                                                <button className="btn btn-primary btn-sm" onClick={handleCreateSeriesFromScrape} disabled={scrapeNewLoading}>
+                                                    {scrapeNewLoading ? 'Creating...' : `Create Series & Stage ${scrapeNewPreview.chapters_count} Chapters`}
+                                                </button>
+                                                <button className="btn btn-ghost btn-sm" onClick={() => { setScrapeNewPreview(null); setScrapeNewUrl(''); }}>Cancel</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* All sources */}
+                        <div className="admin-card">
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                                <h3 style={{ margin: 0 }}>Active Sources ({allScraperSources.length})</h3>
+                                {allScraperSources.length === 0 && (
+                                    <button className="btn btn-ghost btn-sm" onClick={loadAllScraperSources}>Load Sources</button>
+                                )}
+                            </div>
+                            {allScraperSources.length === 0 ? (
+                                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textAlign: 'center', padding: 20 }}>
+                                    No sources yet. Open a series and add a URL in the Auto Import section.
+                                </p>
+                            ) : (
+                                <table className="admin-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Series</th>
+                                            <th>Site</th>
+                                            <th>Source URL</th>
+                                            <th>Last Checked</th>
+                                            <th>Last Chapter</th>
+                                            <th>Pending</th>
+                                            <th>Auto Sync</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {allScraperSources.map(src => (
+                                            <tr key={src.id}>
+                                                <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>
+                                                    <button className="btn btn-ghost btn-sm" style={{ fontSize: '0.78rem', padding: '2px 6px' }}
+                                                        onClick={() => { setTab('series'); openSeriesDetail(src.series_id); }}>
+                                                        {src.series_title}
+                                                    </button>
+                                                </td>
+                                                <td><span style={{ fontSize: '0.7rem', padding: '2px 7px', borderRadius: 4, background: 'rgba(99,102,241,0.15)', color: 'var(--accent-light)', textTransform: 'uppercase' }}>{src.source_site}</span></td>
+                                                <td style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                                                    <a href={src.source_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-light)' }}>{src.source_url}</a>
+                                                </td>
+                                                <td style={{ fontSize: '0.78rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                                                    {src.last_checked ? new Date(src.last_checked).toLocaleString() : 'Never'}
+                                                </td>
+                                                <td style={{ fontSize: '0.8rem', fontWeight: 600 }}>
+                                                    {src.last_chapter_found > 0 ? `Ch. ${src.last_chapter_found}` : '-'}
+                                                </td>
+                                                <td>
+                                                    {src.pending_count > 0 ? (
+                                                        <span style={{ fontSize: '0.72rem', padding: '2px 8px', borderRadius: 50, background: 'rgba(245,158,11,0.15)', color: '#f59e0b', fontWeight: 700 }}>
+                                                            {src.pending_count} pending
+                                                        </span>
+                                                    ) : <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>—</span>}
+                                                </td>
+                                                <td>
+                                                    <span style={{ fontSize: '0.72rem', color: src.auto_sync ? '#22c55e' : 'var(--text-muted)' }}>
+                                                        {src.auto_sync ? '✓ On' : 'Off'}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
                     </>
                 )}
 
