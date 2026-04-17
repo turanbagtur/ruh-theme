@@ -118,9 +118,13 @@ export async function POST(request) {
             try {
                 const { meta, chapters } = await scrapeSeriesInfo(url, { language: language || 'en' });
 
-                // Find which chapters already exist in DB for this series
+                // Find which chapters already exist in DB (published OR pending) for this series
                 const existingChapters = db.prepare('SELECT chapter_number FROM chapters WHERE series_id = ?').all(series_id);
-                const existingNums = new Set(existingChapters.map(c => c.chapter_number));
+                const existingPending = db.prepare("SELECT chapter_number FROM scraper_pending_chapters WHERE series_id = ? AND status = 'pending'").all(series_id);
+                const existingNums = new Set([
+                    ...existingChapters.map(c => c.chapter_number),
+                    ...existingPending.map(c => c.chapter_number),
+                ]);
 
                 const newChapters = chapters.filter(c => !existingNums.has(c.chapter_number));
 
