@@ -73,7 +73,7 @@ export async function GET(request) {
         // Recent reading history (last 10 chapters)
         const recentReads = db.prepare(`
             SELECT ch.id, ch.chapter_number, ch.title, rh.created_at,
-                   s.id as series_id, s.title as series_title, s.slug as series_slug, s.cover_image
+                   s.id as series_id, s.title as series_title, s.slug as series_slug, s.cover_url as cover_image
             FROM read_history rh
             JOIN chapters ch ON ch.id = rh.chapter_id
             JOIN series s ON s.id = ch.series_id
