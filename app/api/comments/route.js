@@ -96,7 +96,7 @@ export async function POST(request) {
             return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
         }
 
-        const { chapterId, seriesId, content, parentId } = await request.json();
+        const { chapterId, seriesId, content, parentId, isSpoiler } = await request.json();
 
         if (!content || (!chapterId && !seriesId)) {
             return NextResponse.json({ error: 'Content and either chapterId or seriesId are required' }, { status: 400 });
@@ -116,8 +116,8 @@ export async function POST(request) {
         // before applying markdown transforms, preventing XSS without double-encoding.
         const db = getDb();
         const result = db.prepare(
-            'INSERT INTO comments (user_id, chapter_id, series_id, content, parent_id) VALUES (?, ?, ?, ?, ?)'
-        ).run(user.id, chapterId || null, seriesId || null, trimmedContent, parentId || null);
+            'INSERT INTO comments (user_id, chapter_id, series_id, content, parent_id, is_spoiler) VALUES (?, ?, ?, ?, ?, ?)'
+        ).run(user.id, chapterId || null, seriesId || null, trimmedContent, parentId || null, isSpoiler ? 1 : 0);
 
         const comment = db.prepare(`
             SELECT c.*, u.username, u.avatar_url, u.yomi_points,

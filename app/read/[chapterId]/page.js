@@ -661,6 +661,45 @@ function ReaderContent() {
                 </div>
             )}
 
+            {/* Next Chapter End-of-Chapter Card */}
+            {nextChapter ? (
+                <div className="next-chapter-card">
+                    <div className="next-chapter-card-inner">
+                        <div className="next-chapter-card-label">Next Up</div>
+                        <div className="next-chapter-card-title">
+                            {series.title} — Chapter {nextChapter.chapter_number}
+                            {nextChapter.title ? ` — ${nextChapter.title}` : ''}
+                        </div>
+                        <div className="next-chapter-card-actions">
+                            <Link href={`/series/${seriesSlug}`} className="btn btn-ghost btn-sm">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                                Series
+                            </Link>
+                            <button className="btn btn-primary" onClick={() => navigateTo(nextChapter)}>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m9 18 6-6-6-6"/></svg>
+                                Read Chapter {nextChapter.chapter_number}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            ) : (
+                <div className="next-chapter-card next-chapter-card--end">
+                    <div className="next-chapter-card-inner">
+                        <div className="next-chapter-card-label">You&apos;re up to date!</div>
+                        <div className="next-chapter-card-title">No more chapters available for now.</div>
+                        <div className="next-chapter-card-actions">
+                            <Link href={`/series/${seriesSlug}`} className="btn btn-ghost btn-sm">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                                Back to Series
+                            </Link>
+                            <Link href="/series" className="btn btn-primary btn-sm">
+                                Browse More
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Chapter Navigation */}
             <div className="reader-nav">
                 {prevChapter ? (

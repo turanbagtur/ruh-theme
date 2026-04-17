@@ -21,6 +21,8 @@ export default function SeriesDetailPage() {
     const [sortDesc, setSortDesc] = useState(true);
     const [dominantColor, setDominantColor] = useState(null);
     const [descExpanded, setDescExpanded] = useState(false);
+    const [readingListStatus, setReadingListStatus] = useState(null); // null | 'reading' | 'completed' | 'plan' | 'dropped'
+    const [showListDropdown, setShowListDropdown] = useState(false);
 
     useEffect(() => {
         async function fetchSeries() {
@@ -42,21 +44,24 @@ export default function SeriesDetailPage() {
         }
     }, [series?.title]);
 
-    // Fetch related series
+    // Fetch similar series using the dedicated API
     useEffect(() => {
+        if (!series?.id) return;
         async function fetchRelated() {
             try {
-                const res = await fetch('/api/series?sort=popular');
+                const res = await fetch(`/api/series/similar?id=${series.id}&limit=6`);
                 const data = await res.json();
-                const others = (data.series || []).filter(s => String(s.slug || s.id) !== String(id));
-                setRelatedSeries(others.slice(0, 4));
+                setRelatedSeries(data.similar || []);
             } catch { }
         }
         fetchRelated();
-    }, [id]);
+    }, [series?.id]);
 
     useEffect(() => {
-        if (user && series?.id) checkFavorite(series.id);
+        if (user && series?.id) {
+            checkFavorite(series.id);
+            checkReadingList(series.id);
+        }
     }, [user, series?.id]);
 
     async function checkFavorite(numericId) {
@@ -65,6 +70,34 @@ export default function SeriesDetailPage() {
             const data = await res.json();
             setIsFavorite(data.isFavorite);
         } catch { }
+    }
+
+    async function checkReadingList(numericId) {
+        try {
+            const res = await authFetch(`/api/reading-list?status=all`);
+            if (!res) return;
+            const data = await res.json();
+            const entry = (data.list || []).find(item => item.series_id === numericId);
+            setReadingListStatus(entry?.status || null);
+        } catch { }
+    }
+
+    async function updateReadingList(status) {
+        if (!user || !series?.id) return;
+        setShowListDropdown(false);
+        try {
+            if (status === null) {
+                await authFetch(`/api/reading-list?seriesId=${series.id}`, { method: 'DELETE' });
+                setReadingListStatus(null);
+            } else {
+                await authFetch('/api/reading-list', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ seriesId: series.id, status })
+                });
+                setReadingListStatus(status);
+            }
+        } catch (err) { console.error(err); }
     }
 
     async function toggleFavorite() {
@@ -148,6 +181,42 @@ export default function SeriesDetailPage() {
                             <svg width="16" height="16" viewBox="0 0 24 24" fill={isFavorite ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>
                             {isFavorite ? 'Favorited' : 'Bookmark Series'}
                         </button>
+
+                        {/* Reading List Dropdown Button */}
+                        {user && (
+                            <div style={{ position: 'relative' }}>
+                                <button
+                                    className="btn btn-ghost"
+                                    onClick={() => setShowListDropdown(v => !v)}
+                                    style={{ background: readingListStatus ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.05)', color: readingListStatus ? 'var(--accent-light)' : undefined, gap: 8 }}
+                                >
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                                    {readingListStatus ? {reading:'Reading',completed:'Completed',plan:'Plan to Read',dropped:'Dropped'}[readingListStatus] : 'Add to List'}
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m6 9 6 6 6-6"/></svg>
+                                </button>
+                                {showListDropdown && (
+                                    <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 100, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', minWidth: 160, marginTop: 4, boxShadow: '0 8px 24px rgba(0,0,0,0.4)' }}>
+                                        {[
+                                            { value: 'reading', label: '📖 Reading' },
+                                            { value: 'completed', label: '✅ Completed' },
+                                            { value: 'plan', label: '📌 Plan to Read' },
+                                            { value: 'dropped', label: '🚫 Dropped' },
+                                        ].map(opt => (
+                                            <button key={opt.value} onClick={() => updateReadingList(opt.value)}
+                                                style={{ display: 'block', width: '100%', padding: '10px 14px', background: readingListStatus === opt.value ? 'var(--bg-tertiary)' : 'transparent', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', textAlign: 'left', fontSize: '0.88rem', fontWeight: readingListStatus === opt.value ? 700 : 400 }}>
+                                                {opt.label}
+                                            </button>
+                                        ))}
+                                        {readingListStatus && (
+                                            <button onClick={() => updateReadingList(null)}
+                                                style={{ display: 'block', width: '100%', padding: '10px 14px', background: 'transparent', border: 'none', borderTop: '1px solid var(--border)', color: 'var(--danger)', cursor: 'pointer', textAlign: 'left', fontSize: '0.88rem' }}>
+                                                ✕ Remove from List
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
 

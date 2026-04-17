@@ -30,8 +30,10 @@ export default function CommentSection({ chapterId, seriesId }) {
     const { user, authFetch } = useAuth();
     const [comments, setComments] = useState([]);
     const [newComment, setNewComment] = useState('');
+    const [isSpoilerComment, setIsSpoilerComment] = useState(false);
     const [replyTo, setReplyTo] = useState(null);
     const [replyContent, setReplyContent] = useState('');
+    const [revealedSpoilers, setRevealedSpoilers] = useState(new Set());
     const [loading, setLoading] = useState(true);
     const [openMenu, setOpenMenu] = useState(null);
     const [editingComment, setEditingComment] = useState(null);
@@ -153,11 +155,11 @@ export default function CommentSection({ chapterId, seriesId }) {
         e.preventDefault();
         if (!newComment.trim() || !user) return;
         try {
-            const body = { content: newComment.trim() };
+            const body = { content: newComment.trim(), isSpoiler: isSpoilerComment };
             if (chapterId) body.chapterId = chapterId; else body.seriesId = seriesId;
             const res = await authFetch('/api/comments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
             const data = await res.json();
-            if (data.comment) { setComments([data.comment, ...comments]); setNewComment(''); }
+            if (data.comment) { setComments([data.comment, ...comments]); setNewComment(''); setIsSpoilerComment(false); }
         } catch (err) { console.error(err); }
     }
 
@@ -343,8 +345,16 @@ export default function CommentSection({ chapterId, seriesId }) {
                                 <button className="btn btn-ghost btn-sm" onClick={() => setEditingComment(null)}>Cancel</button>
                             </div>
                         </div>
+                    ) : c.is_spoiler && !revealedSpoilers.has(c.id) ? (
+                        <div className="spoiler-comment-block" onClick={() => setRevealedSpoilers(prev => new Set([...prev, c.id]))}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61M2 2l20 20"/></svg>
+                            <span>Spoiler — click to reveal</span>
+                        </div>
                     ) : (
-                        <div className="asura-comment-text">{renderMarkdown(c.content)}</div>
+                        <div className="asura-comment-text">
+                            {c.is_spoiler && <span className="spoiler-comment-badge">⚠ Spoiler</span>}
+                            {renderMarkdown(c.content)}
+                        </div>
                     )}
 
                     <div className="asura-comment-actions">
@@ -490,6 +500,15 @@ export default function CommentSection({ chapterId, seriesId }) {
                             <button type="button" className="asura-toolbar-btn" title="Spoiler" onClick={() => insertFormat('||', '||')}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m3 3 18 18M10.5 10.67a2 2 0 0 0 2.83 2.83"/></svg></button>
                         </div>
                         <div className="asura-toolbar-right">
+                            <label className="spoiler-toggle-label" title="Mark as spoiler">
+                                <input
+                                    type="checkbox"
+                                    checked={isSpoilerComment}
+                                    onChange={e => setIsSpoilerComment(e.target.checked)}
+                                    style={{ marginRight: 4, accentColor: 'var(--warning)' }}
+                                />
+                                <span style={{ color: isSpoilerComment ? 'var(--warning)' : 'var(--text-muted)', fontSize: '0.78rem' }}>Spoiler</span>
+                            </label>
                             <span className="asura-char-count">{newComment.length}/2000</span>
                             <button type="submit" className="asura-btn-post" disabled={!newComment.trim()}>Post</button>
                         </div>
