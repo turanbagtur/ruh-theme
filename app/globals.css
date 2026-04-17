@@ -6405,3 +6405,208 @@ a.ann-message:hover {
     max-width: calc(100vw - 24px);
   }
 }
+
+/* ─── New Feature Styles ─── */
+
+/* Next Chapter End-of-Chapter Card */
+.next-chapter-card {
+  margin: 40px auto 0;
+  max-width: 600px;
+  padding: 0 16px;
+}
+.next-chapter-card-inner {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 28px 24px;
+  text-align: center;
+}
+.next-chapter-card--end .next-chapter-card-inner {
+  border-color: var(--border);
+  opacity: 0.85;
+}
+.next-chapter-card-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+.next-chapter-card-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 20px;
+}
+.next-chapter-card-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* Spoiler Comment UI */
+.spoiler-comment-block {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: rgba(245,158,11,0.08);
+  border: 1px dashed rgba(245,158,11,0.35);
+  border-radius: 6px;
+  color: #f59e0b;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s;
+}
+.spoiler-comment-block:hover {
+  background: rgba(245,158,11,0.14);
+}
+.spoiler-comment-badge {
+  display: inline-block;
+  background: rgba(245,158,11,0.15);
+  color: #f59e0b;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  margin-bottom: 4px;
+  letter-spacing: 0.5px;
+}
+.spoiler-toggle-label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+/* Badges Grid */
+.badges-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 12px;
+  margin-top: 8px;
+}
+.badge-card {
+  position: relative;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px 12px;
+  text-align: center;
+  transition: transform 0.15s, border-color 0.15s;
+}
+.badge-card.earned {
+  border-color: #818cf8;
+  box-shadow: 0 0 12px rgba(129,140,248,0.12);
+}
+.badge-card.earned:hover {
+  transform: translateY(-2px);
+}
+.badge-card.locked {
+  opacity: 0.55;
+}
+.badge-new-dot {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 8px;
+  height: 8px;
+  background: #f43f5e;
+  border-radius: 50%;
+}
+.badge-card-icon {
+  font-size: 2rem;
+  margin-bottom: 8px;
+}
+.badge-card-name {
+  font-size: 0.78rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.badge-card-desc {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* Stats Grid (new feature — different from existing .stat-card) */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+@media (max-width: 480px) {
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+}
+.stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px 12px;
+  text-align: center;
+}
+.stat-card-value {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #818cf8;
+}
+.stat-card-label {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Reading List Tabs */
+.reading-list-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.reading-list-tab {
+  padding: 7px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.reading-list-tab.active,
+.reading-list-tab:hover {
+  background: #818cf8;
+  color: #fff;
+  border-color: #818cf8;
+}
+
+/* 30-day Activity Chart */
+.activity-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 60px;
+  padding: 4px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.activity-bar {
+  flex: 1;
+  min-width: 3px;
+  background: #818cf8;
+  border-radius: 2px 2px 0 0;
+  transition: opacity 0.15s;
+  opacity: 0.7;
+}
+.activity-bar:hover {
+  opacity: 1;
+}
