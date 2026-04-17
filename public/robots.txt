@@ -1,8 +1,25 @@
 User-agent: *
 Allow: /
+Allow: /series
+Allow: /series/
+Allow: /ranking
+Allow: /requests
+
 Disallow: /api/
 Disallow: /admin-panel
 Disallow: /login
 Disallow: /register
+Disallow: /profile
+Disallow: /admin
+
+# Block known bad bots
+User-agent: AhrefsBot
+Crawl-delay: 10
+
+User-agent: SemrushBot
+Crawl-delay: 10
+
+User-agent: MJ12bot
+Disallow: /
 
 Sitemap: https://yomitranslate.com/sitemap.xml

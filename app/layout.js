@@ -10,12 +10,52 @@ import jwt from 'jsonwebtoken';
 // Paths that bypass maintenance mode (so admin can log in)
 const MAINTENANCE_BYPASS = ['/login', '/api/'];
 
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://yomitranslate.com';
+
+const websiteJsonLd = JSON.stringify({
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'WebSite',
+      '@id': `${BASE_URL}/#website`,
+      url: BASE_URL,
+      name: 'YomiTranslate',
+      description: 'Read manga online with AI-powered instant translation.',
+      potentialAction: {
+        '@type': 'SearchAction',
+        target: {
+          '@type': 'EntryPoint',
+          urlTemplate: `${BASE_URL}/series?q={search_term_string}`,
+        },
+        'query-input': 'required name=search_term_string',
+      },
+    },
+    {
+      '@type': 'Organization',
+      '@id': `${BASE_URL}/#organization`,
+      name: 'YomiTranslate',
+      url: BASE_URL,
+      logo: {
+        '@type': 'ImageObject',
+        url: `${BASE_URL}/icon-512.png`,
+        width: 512,
+        height: 512,
+      },
+      contactPoint: {
+        '@type': 'ContactPoint',
+        contactType: 'customer support',
+        email: 'yomiitranslate@gmail.com',
+      },
+    },
+  ],
+});
+
 export const metadata = {
   title: 'YomiTranslate — Read Manga Online with AI Translation',
   description: 'Read manga in any language with AI-powered instant translation. Explore thousands of manga series translated with cutting-edge AI technology. Free, fast, and always up-to-date.',
   keywords: 'manga, read manga online, manga translation, AI translation, yomitranslate, webtoon, manhwa, manhua, manga reader, online manga, free manga, manga chapters',
   manifest: '/manifest.json',
-  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'https://yomitranslate.com'),
+  metadataBase: new URL(BASE_URL),
   openGraph: {
     type: 'website',
     locale: 'en_US',
@@ -214,6 +254,10 @@ export default async function RootLayout({ children }) {
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="mobile-web-app-capable" content="yes" />
         <link rel="apple-touch-icon" href="/icon-192.png" />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: websiteJsonLd }}
+        />
       </head>
       <body suppressHydrationWarning>
         <AuthProvider>
