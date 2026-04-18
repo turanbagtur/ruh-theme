@@ -6,10 +6,10 @@ import { saveApiKey, getActiveApiKey, SUPPORTED_LANGUAGES } from '@/lib/torii';
 import fs from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
-import sharp from 'sharp';
 
-// ── Convert any image buffer to WebP ─────────────────────────────────────────
+// ── Convert any image buffer to WebP (dynamic import to avoid Next.js bundling sharp) ──
 async function toWebP(buffer, quality = 85) {
+    const sharp = (await import('sharp')).default;
     return sharp(buffer).webp({ quality }).toBuffer();
 }
 

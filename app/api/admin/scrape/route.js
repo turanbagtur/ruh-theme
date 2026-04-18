@@ -10,7 +10,6 @@ import {
 import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
-import sharp from 'sharp';
 
 function makeUniqueSlug(db, title, excludeId = null) {
     let base = generateSlug(title);
@@ -46,6 +45,7 @@ async function downloadCover(imageUrl, title) {
         const fileName = `cover_${slug}_${uuidv4().split('-')[0]}.webp`;
         let webpBuffer;
         try {
+            const sharp = (await import('sharp')).default;
             webpBuffer = await sharp(rawBuffer).webp({ quality: 90 }).toBuffer();
         } catch {
             webpBuffer = rawBuffer; // fallback: save raw if sharp fails
