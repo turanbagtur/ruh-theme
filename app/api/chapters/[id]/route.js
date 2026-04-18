@@ -46,6 +46,15 @@ export async function GET(request, { params }) {
             pagesWithTranslations = pages.map(p => ({ ...p, display_image: p.image_path, is_translated: false }));
         }
 
+        // Fetch translated languages for this chapter to show in language selector
+        const availableLanguagesRows = db.prepare(`
+            SELECT DISTINCT t.language_code
+            FROM translations t
+            JOIN pages p ON t.page_id = p.id
+            WHERE p.chapter_id = ?
+        `).all(id);
+        const availableLanguages = availableLanguagesRows.map(row => row.language_code);
+
         // Get prev/next chapters
         const prevChapter = db.prepare(
             'SELECT id, chapter_number FROM chapters WHERE series_id = ? AND chapter_number < ? ORDER BY chapter_number DESC LIMIT 1'
@@ -61,6 +70,7 @@ export async function GET(request, { params }) {
             pages: pagesWithTranslations,
             prevChapter: prevChapter || null,
             nextChapter: nextChapter || null,
+            availableLanguages,
         });
     } catch (error) {
         console.error('GET /api/chapters/[id] error:', error);

@@ -440,6 +440,15 @@ export default function SeriesDetailPage() {
                                         {ch.title && ch.title !== `Chapter ${ch.chapter_number}` && (
                                             <span className="sdcr-title">{ch.title}</span>
                                         )}
+                                        {ch.availableLanguages?.length > 0 && (
+                                            <div style={{ display: 'flex', gap: 4, marginLeft: 8 }}>
+                                                {ch.availableLanguages.map(lang => (
+                                                    <span key={lang} className="sd-genre-tag" style={{ padding: '0px 5px', fontSize: '0.65rem', textTransform: 'uppercase', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 4 }}>
+                                                        {lang}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="sdcr-right">
                                         {ch.read_count > 0 && (

@@ -44,7 +44,7 @@ const LANGUAGES = [
     { code: 'tl', name: 'Filipino', flag: '🇵🇭' },
 ];
 
-export default function LanguageSelector({ selectedLang, onSelect, disabled }) {
+export default function LanguageSelector({ selectedLang, onSelect, disabled, availableLanguages }) {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState('');
     const [dropRight, setDropRight] = useState(false);
@@ -175,6 +175,11 @@ export default function LanguageSelector({ selectedLang, onSelect, disabled }) {
                             >
                                 <span>{lang.flag}</span>
                                 {lang.name}
+                                {availableLanguages?.includes(lang.code) && (
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--success, #10b981)" strokeWidth="2.5" style={{ marginLeft: 'auto' }}>
+                                        <polyline points="20 6 9 17 4 12"/>
+                                    </svg>
+                                )}
                             </button>
                         ))}
                         {filtered.length === 0 && (

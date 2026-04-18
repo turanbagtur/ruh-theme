@@ -559,7 +559,7 @@ function ReaderContent() {
                         )}
                     </div>
 
-                    <LanguageSelector selectedLang={selectedLang} onSelect={handleLanguageChange} disabled={translating} />
+                    <LanguageSelector selectedLang={selectedLang} onSelect={handleLanguageChange} disabled={translating} availableLanguages={data?.availableLanguages || []} />
 
                     {hasUntranslated && !translating && (
                         <button className="btn btn-primary btn-sm translate-btn" onClick={translateAllPages}>
