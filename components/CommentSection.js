@@ -347,12 +347,34 @@ export default function CommentSection({ chapterId, seriesId }) {
                         </div>
                     ) : c.is_spoiler && !revealedSpoilers.has(c.id) ? (
                         <div className="spoiler-comment-block" onClick={() => setRevealedSpoilers(prev => new Set([...prev, c.id]))}>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61M2 2l20 20"/></svg>
-                            <span>Spoiler — click to reveal</span>
+                            <div className="spoiler-block-icon">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61M2 2l20 20"/></svg>
+                            </div>
+                            <div className="spoiler-block-text">
+                                <span className="spoiler-block-label">⚠ Spoiler Warning</span>
+                                <span className="spoiler-block-hint">Click to reveal content</span>
+                            </div>
+                            <div className="spoiler-block-action">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                Reveal
+                            </div>
                         </div>
                     ) : (
                         <div className="asura-comment-text">
-                            {c.is_spoiler && <span className="spoiler-comment-badge">⚠ Spoiler</span>}
+                            {c.is_spoiler && (
+                                <div className="spoiler-revealed-badge">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                    Spoiler
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); setRevealedSpoilers(prev => { const n = new Set(prev); n.delete(c.id); return n; }); }}
+                                        className="spoiler-hide-btn"
+                                        title="Hide spoiler"
+                                    >
+                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61M2 2l20 20"/></svg>
+                                        Hide
+                                    </button>
+                                </div>
+                            )}
                             {renderMarkdown(c.content)}
                         </div>
                     )}

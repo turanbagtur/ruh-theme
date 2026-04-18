@@ -165,31 +165,39 @@ export default function HomePage() {
               {popularSeries.map((s, i) => (
                 <div key={s.id} className="hero-slide">
                   <div className="hero-slide-bg">
-                    <img src={s.cover_url || '/demo/cover1.jpg'} alt="" loading={i === 0 ? 'eager' : 'lazy'} />
+                    <img src={s.cover_url || '/demo/cover1.jpg'} alt={s.title} loading={i === 0 ? 'eager' : 'lazy'} />
                   </div>
                   <div className="hero-slide-content">
                     <div className="hero-slide-meta">
-                      <span>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
-                        {s.rating?.toFixed(1)}
+                      <span className="hero-meta-badge">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="#f59e0b"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
+                        {s.rating?.toFixed(1) || 'N/A'}
                       </span>
-                      <span>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
+                      <span className="hero-meta-badge">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
                         {(s.views || 0).toLocaleString()}
                       </span>
+                      <span className={`hero-status-badge ${s.status}`}>{s.status === 'ongoing' ? 'Ongoing' : 'Completed'}</span>
                     </div>
-                    <h2>{s.title}</h2>
+                    <h2 className="hero-slide-title">{s.title}</h2>
                     <div className="hero-slide-genres">
                       {parseGenres(s.genres).slice(0, 3).map((g, j) => (
-                        <span key={j} className="genre-tag">{g}</span>
+                        <span key={j} className="hero-genre-tag">{g}</span>
                       ))}
                     </div>
                     <div className="hero-slide-actions">
-                      <Link href={`/series/${s.slug || s.id}`} className="btn btn-primary">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" /></svg>
+                      <Link href={`/series/${s.slug || s.id}`} className="btn btn-primary hero-read-btn">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
                         Read Now
                       </Link>
+                      <Link href={`/series/${s.slug || s.id}`} className="btn btn-ghost hero-detail-btn">
+                        Details
+                      </Link>
                     </div>
+                  </div>
+                  {/* Cover thumbnail on right for larger screens */}
+                  <div className="hero-slide-cover-thumb">
+                    <img src={s.cover_url || '/demo/cover1.jpg'} alt={s.title} loading={i === 0 ? 'eager' : 'lazy'} />
                   </div>
                 </div>
               ))}
@@ -197,22 +205,23 @@ export default function HomePage() {
             {popularSeries.length > 1 && (
               <>
                 <button className="hero-slider-arrow left" onClick={prevSlide} aria-label="Previous">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m15 18-6-6 6-6" /></svg>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
                 </button>
                 <button className="hero-slider-arrow right" onClick={nextSlide} aria-label="Next">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m9 18 6-6-6-6" /></svg>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
                 </button>
                 <div className="hero-slider-dots">
-                  {popularSeries.map((_, i) => (
-                    <button key={i} className={`hero-dot ${slideIndex === i ? 'active' : ''}`} onClick={() => goToSlide(i)} aria-label={`Slide ${i + 1}`} />
+                  {popularSeries.map((s2, i) => (
+                    <button key={i} className={`hero-dot ${slideIndex === i ? 'active' : ''}`} onClick={() => goToSlide(i)} aria-label={`Go to slide ${i + 1}: ${s2.title}`} />
                   ))}
                 </div>
+                <div className="hero-slide-counter">{slideIndex + 1} / {popularSeries.length}</div>
               </>
             )}
           </div>
         )}
         {loading && (
-          <div className="hero-slider rounded-slider skeleton" style={{ height: '420px' }}></div>
+          <div className="hero-slider rounded-slider skeleton" style={{ height: '440px' }}></div>
         )}
       </div>
 
@@ -386,18 +395,40 @@ export default function HomePage() {
 
             {/* Editor's Pick Widget */}
             {!loading && editorPick && (
-              <div className="sidebar-widget">
-                <div className="widget-header">
-                  <h3>Editor's Pick</h3>
+              <div className="sidebar-widget epw-sidebar-widget">
+                <div className="epw-header">
+                  <span className="epw-badge-icon">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
+                    EDITOR'S PICK
+                  </span>
                 </div>
-                <Link href={`/series/${editorPick.slug || editorPick.id}`} className="editor-pick-widget">
-                  <div className="epw-cover">
-                    <img src={editorPick.cover_url || '/demo/cover1.jpg'} alt="" loading="lazy" />
+                <Link href={`/series/${editorPick.slug || editorPick.id}`} className="epw-card">
+                  <div className="epw-card-bg">
+                    <img src={editorPick.cover_url || '/demo/cover1.jpg'} alt={editorPick.title} loading="lazy" />
                   </div>
-                  <div className="epw-info">
-                    <span className="epw-title">{editorPick.title}</span>
-                    <p className="epw-desc">{editorPick.description}</p>
-                    <button className="btn btn-primary btn-sm mt-2 w-full">Start Reading</button>
+                  <div className="epw-card-overlay" />
+                  <div className="epw-card-content">
+                    <div className="epw-card-genres">
+                      {parseGenres(editorPick.genres).slice(0, 2).map((g, i) => (
+                        <span key={i} className="epw-genre-tag">{g}</span>
+                      ))}
+                    </div>
+                    <h4 className="epw-card-title">{editorPick.title}</h4>
+                    {editorPick.description && (
+                      <p className="epw-card-desc">{editorPick.description}</p>
+                    )}
+                    <div className="epw-card-meta">
+                      {editorPick.rating > 0 && (
+                        <span>
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="#f59e0b"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
+                          {editorPick.rating.toFixed(1)}
+                        </span>
+                      )}
+                      <span className="epw-read-btn">
+                        Start Reading
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m9 18 6-6-6-6"/></svg>
+                      </span>
+                    </div>
                   </div>
                 </Link>
               </div>
