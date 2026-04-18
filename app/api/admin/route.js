@@ -166,6 +166,19 @@ export async function POST(request) {
             return NextResponse.json({ message: 'Series updated', slug });
         }
 
+        if (action === 'update-chapter') {
+            const db = getDb();
+            const chapterId = formData.get('chapterId');
+            const chapterNumber = formData.get('chapterNumber');
+            const title = formData.get('title') || `Chapter ${chapterNumber}`;
+
+            db.prepare(
+                'UPDATE chapters SET chapter_number = ?, title = ? WHERE id = ?'
+            ).run(chapterNumber, title, chapterId);
+
+            return NextResponse.json({ message: 'Chapter updated' });
+        }
+
         if (action === 'add-chapter') {
             const db = getDb();
             const seriesId = formData.get('seriesId');

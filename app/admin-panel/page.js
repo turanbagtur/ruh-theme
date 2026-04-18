@@ -106,6 +106,11 @@ export default function AdminPanelPage() {
     // Upload pages
     const [uploadChapterId, setUploadChapterId] = useState(null);
     const [uFiles, setUFiles] = useState(null);
+
+    // Edit chapter
+    const [editingChapterId, setEditingChapterId] = useState(null);
+    const [editChapNum, setEditChapNum] = useState('');
+    const [editChapTitle, setEditChapTitle] = useState('');
     
     // Bulk chapter upload
     const [bulkFiles, setBulkFiles] = useState(null);
@@ -404,8 +409,8 @@ export default function AdminPanelPage() {
                 
                 if(!newChapId) throw new Error(`Could not create chapter ${chapNum}`);
 
-                // Upload chunks of 3 images at a time to prevent Vercel/NextJS Payload sizes timeouts
-                const chunkSize = 3;
+                // Upload chunks of 1 image at a time to prevent Vercel/NextJS Payload sizes timeouts (especially for large JPGs)
+                const chunkSize = 1;
                 for (let k = 0; k < files.length; k += chunkSize) {
                     const chunkFiles = files.slice(k, k + chunkSize);
                     const fd = new FormData(); 
@@ -414,7 +419,7 @@ export default function AdminPanelPage() {
                     for(const f of chunkFiles) fd.append('pages', f);
 
                     const r3 = await fetch('/api/admin', { method: 'POST', body: fd, headers: authHeaders() });
-                    if(!r3.ok) throw new Error(`Failed to upload images for Chapter ${chapNum} (Chunk ${k/chunkSize + 1})`);
+                    if(!r3.ok) throw new Error(`Failed to upload images for Chapter ${chapNum} (Chunk ${Math.floor(k/chunkSize) + 1})`);
                 }
                 
                 successCount++;
@@ -446,16 +451,47 @@ export default function AdminPanelPage() {
         finally { setSubmitting(false); }
     }
 
+    async function handleUpdateChapter() {
+        if (!editChapNum) return show('Chapter number is required', 'error');
+        setSubmitting(true);
+        try {
+            await doAction('update-chapter', { chapterId: editingChapterId, chapterNumber: editChapNum, title: editChapTitle });
+            show('Chapter updated'); setEditingChapterId(null); setEditChapNum(''); setEditChapTitle('');
+            openSeriesDetail(detailSeries.id); fetchStats();
+        } catch (e) { show(e.message, 'error'); }
+        finally { setSubmitting(false); }
+    }
+
     async function handleUploadPages(e) {
         e.preventDefault();
         if (!uploadChapterId || !uFiles?.length) return show('Select files', 'error');
         setSubmitting(true);
         try {
-            const fd = new FormData(); fd.append('action', 'upload-pages'); fd.append('chapterId', uploadChapterId);
-            for (const f of uFiles) fd.append('pages', f);
-            const r = await fetch('/api/admin', { method: 'POST', body: fd, headers: authHeaders() });
-            const d = await r.json(); if (!r.ok) throw new Error(d.error);
-            show(d.message); setUFiles(null); setUploadChapterId(null);
+            const chunkSize = 1; // Process 1 file at a time to prevent Payload limits
+            let errors = [];
+            let totalUploaded = 0;
+            const uFilesArray = Array.from(uFiles);
+            for (let k = 0; k < uFilesArray.length; k += chunkSize) {
+                const chunkFiles = uFilesArray.slice(k, k + chunkSize);
+                const fd = new FormData(); 
+                fd.append('action', 'upload-pages'); 
+                fd.append('chapterId', uploadChapterId);
+                for (const f of chunkFiles) fd.append('pages', f);
+                
+                const r = await fetch('/api/admin', { method: 'POST', body: fd, headers: authHeaders() });
+                const d = await r.json(); 
+                if (!r.ok) {
+                    errors.push(d.error || `Chunk ${Math.floor(k/chunkSize) + 1} failed`);
+                } else {
+                    totalUploaded += (d.uploaded ? d.uploaded.length : 0);
+                }
+            }
+            if (errors.length > 0) {
+                show(`Uploaded ${totalUploaded} pages but had errors: ${errors[0]}`, 'error');
+            } else {
+                show(`${totalUploaded} pages uploaded successfully`);
+            }
+            setUFiles(null); setUploadChapterId(null);
             openSeriesDetail(detailSeries.id); fetchStats();
         } catch (e) { show(e.message, 'error'); }
         finally { setSubmitting(false); }
@@ -1110,48 +1146,93 @@ export default function AdminPanelPage() {
                                                     checked={selectedChapters.includes(ch.id)}
                                                     onChange={(e) => {
                                                         if (e.target.checked) setSelectedChapters(prev => [...prev, ch.id]);
-                                                        else setSelectedChapters(prev => prev.filter(id => id !== ch.id));
+                                                        else setSelectedChapters(prev => prev.filter(id => ch.id !== id));
                                                     }}
                                                     style={{ width: 16, height: 16, cursor: 'pointer' }}
                                                 />
-                                                <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--accent-light)', minWidth: 40 }}>
-                                                    #{ch.chapter_number}
-                                                </span>
-                                                <span style={{ fontSize: '0.88rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                                    {ch.title}
-                                                </span>
+                                                {editingChapterId === ch.id ? (
+                                                    <div style={{ display: 'flex', gap: 6, flex: 1 }}>
+                                                        <input 
+                                                            type="number" 
+                                                            step="any" 
+                                                            value={editChapNum} 
+                                                            onChange={e => setEditChapNum(e.target.value)} 
+                                                            className="form-input" 
+                                                            style={{ width: 80, padding: '4px 8px' }} 
+                                                            placeholder="Num"
+                                                        />
+                                                        <input 
+                                                            type="text" 
+                                                            value={editChapTitle} 
+                                                            onChange={e => setEditChapTitle(e.target.value)} 
+                                                            className="form-input" 
+                                                            style={{ flex: 1, padding: '4px 8px' }} 
+                                                            placeholder="Chapter Title"
+                                                        />
+                                                    </div>
+                                                ) : (
+                                                    <>
+                                                        <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--accent-light)', minWidth: 40 }}>
+                                                            #{ch.chapter_number}
+                                                        </span>
+                                                        <span style={{ fontSize: '0.88rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                            {ch.title}
+                                                        </span>
+                                                    </>
+                                                )}
                                             </div>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                                                 <span className="admin-badge user-role">{ch.page_count || 0} pages</span>
                                                 {ch.translation_count > 0 && <span className="admin-badge admin-role">{ch.translation_count} lang</span>}
 
-                                                {uploadChapterId === ch.id ? (
-                                                    <form onSubmit={handleUploadPages} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                                                        <input type="file" accept="image/*" multiple onChange={e => setUFiles(e.target.files)} style={{ width: 180, fontSize: '0.72rem' }} />
-                                                        <button type="submit" className="btn btn-primary btn-sm" disabled={submitting}>
-                                                            {submitting ? '...' : 'Upload'}
+                                                {editingChapterId === ch.id ? (
+                                                    <div style={{ display: 'flex', gap: 6 }}>
+                                                        <button className="btn btn-primary btn-sm" onClick={handleUpdateChapter} disabled={submitting}>
+                                                            <CheckIcon /> Save
                                                         </button>
-                                                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setUploadChapterId(null); setUFiles(null); }}>✕</button>
-                                                    </form>
+                                                        <button className="btn btn-ghost btn-sm" onClick={() => setEditingChapterId(null)}>
+                                                            Cancel
+                                                        </button>
+                                                    </div>
                                                 ) : (
-                                                    <button className="btn btn-ghost btn-sm" onClick={() => setUploadChapterId(ch.id)}
-                                                        title="Upload pages">
-                                                        <UploadIcon />
-                                                    </button>
+                                                    <>
+                                                        <button className="btn btn-ghost btn-sm" onClick={() => {
+                                                            setEditingChapterId(ch.id);
+                                                            setEditChapNum(ch.chapter_number);
+                                                            setEditChapTitle(ch.title || '');
+                                                        }} title="Edit chapter">
+                                                            <EditIcon />
+                                                        </button>
+
+                                                        {uploadChapterId === ch.id ? (
+                                                            <form onSubmit={handleUploadPages} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                                                                <input type="file" accept="image/*" multiple onChange={e => setUFiles(e.target.files)} style={{ width: 180, fontSize: '0.72rem' }} />
+                                                                <button type="submit" className="btn btn-primary btn-sm" disabled={submitting}>
+                                                                    {submitting ? '...' : 'Upload'}
+                                                                </button>
+                                                                <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setUploadChapterId(null); setUFiles(null); }}>✕</button>
+                                                            </form>
+                                                        ) : (
+                                                            <button className="btn btn-ghost btn-sm" onClick={() => setUploadChapterId(ch.id)}
+                                                                title="Upload pages">
+                                                                <UploadIcon />
+                                                            </button>
+                                                        )}
+
+                                                        <button className="btn btn-ghost btn-sm"
+                                                            onClick={() => openChapterPages(ch.id)}
+                                                            title="View pages"
+                                                            style={viewPagesChapterId === ch.id ? { background: 'var(--accent)', color: '#fff' } : {}}>
+                                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                                                        </button>
+
+                                                        <button className="btn btn-danger btn-sm" onClick={() => setConfirmModal({
+                                                            action: 'delete-chapter', body: { chapterId: ch.id },
+                                                            text: `Delete Chapter ${ch.chapter_number} "${ch.title}" and all its pages?`,
+                                                            onDone: () => openSeriesDetail(detailSeries.id)
+                                                        })}><TrashIcon /></button>
+                                                    </>
                                                 )}
-
-                                                <button className="btn btn-ghost btn-sm"
-                                                    onClick={() => openChapterPages(ch.id)}
-                                                    title="View pages"
-                                                    style={viewPagesChapterId === ch.id ? { background: 'var(--accent)', color: '#fff' } : {}}>
-                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-                                                </button>
-
-                                                <button className="btn btn-danger btn-sm" onClick={() => setConfirmModal({
-                                                    action: 'delete-chapter', body: { chapterId: ch.id },
-                                                    text: `Delete Chapter ${ch.chapter_number} "${ch.title}" and all its pages?`,
-                                                    onDone: () => openSeriesDetail(detailSeries.id)
-                                                })}><TrashIcon /></button>
                                             </div>
                                         </div>
                                         {/* Inline pages thumbnail panel */}
