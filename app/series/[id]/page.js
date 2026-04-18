@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import CommentSection from '@/components/CommentSection';
@@ -36,6 +36,13 @@ const RemoveIcon = () => (
     </svg>
 );
 
+const LIST_OPTIONS = [
+    { value: 'reading',   label: 'Reading',      Icon: ReadingIcon },
+    { value: 'completed', label: 'Completed',    Icon: CompletedIcon },
+    { value: 'plan',      label: 'Plan to Read', Icon: PlanIcon },
+    { value: 'dropped',   label: 'Dropped',      Icon: DroppedIcon },
+];
+
 export default function SeriesDetailPage() {
     const { id } = useParams();
     const { user, authFetch } = useAuth();
@@ -51,6 +58,7 @@ export default function SeriesDetailPage() {
     const [readingListStatus, setReadingListStatus] = useState(null);
     const [showListDropdown, setShowListDropdown] = useState(false);
     const [showAllChapters, setShowAllChapters] = useState(false);
+    const [chapterSearch, setChapterSearch] = useState('');
 
     useEffect(() => {
         async function fetchSeries() {
@@ -66,9 +74,7 @@ export default function SeriesDetailPage() {
     }, [id]);
 
     useEffect(() => {
-        if (series?.title) {
-            document.title = `${series.title} — YomiTranslate`;
-        }
+        if (series?.title) document.title = `${series.title} — YomiTranslate`;
     }, [series?.title]);
 
     useEffect(() => {
@@ -90,13 +96,10 @@ export default function SeriesDetailPage() {
         }
     }, [user, series?.id]);
 
-    // Close dropdown when clicking outside
     useEffect(() => {
         if (!showListDropdown) return;
         function handleClick(e) {
-            if (!e.target.closest('.reading-list-dropdown-wrapper')) {
-                setShowListDropdown(false);
-            }
+            if (!e.target.closest('.reading-list-dropdown-wrapper')) setShowListDropdown(false);
         }
         document.addEventListener('mousedown', handleClick);
         return () => document.removeEventListener('mousedown', handleClick);
@@ -152,11 +155,17 @@ export default function SeriesDetailPage() {
     }
 
     function shareSeries() {
-        const url = window.location.href;
-        navigator.clipboard.writeText(url).then(() => {
+        navigator.clipboard.writeText(window.location.href).then(() => {
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
         });
+    }
+
+    function fmtNum(n) {
+        if (!n) return '0';
+        if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
+        if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
+        return String(n);
     }
 
     if (loading) return <div className="page-loading"><div className="spinner" /></div>;
@@ -183,275 +192,276 @@ export default function SeriesDetailPage() {
     } : {};
 
     const descText = series.description || 'No synopsis available for this series.';
-    const isLongDesc = descText.length > 300;
+    const isLongDesc = descText.length > 250;
 
     const sortedChapters = [...chapters].sort((a, b) => sortDesc ? b.chapter_number - a.chapter_number : a.chapter_number - b.chapter_number);
-    const visibleChapters = showAllChapters ? sortedChapters : sortedChapters.slice(0, CHAPTERS_INITIAL);
-    const hasMore = sortedChapters.length > CHAPTERS_INITIAL;
+    const filteredChapters = chapterSearch.trim()
+        ? sortedChapters.filter(ch => {
+            const q = chapterSearch.toLowerCase();
+            return String(ch.chapter_number).includes(q) || (ch.title || '').toLowerCase().includes(q);
+        })
+        : sortedChapters;
+    const visibleChapters = (!chapterSearch.trim() && !showAllChapters) ? filteredChapters.slice(0, CHAPTERS_INITIAL) : filteredChapters;
+    const hasMore = !chapterSearch.trim() && filteredChapters.length > CHAPTERS_INITIAL;
 
-    const LIST_OPTIONS = [
-        { value: 'reading',   label: 'Reading',      Icon: ReadingIcon },
-        { value: 'completed', label: 'Completed',    Icon: CompletedIcon },
-        { value: 'plan',      label: 'Plan to Read', Icon: PlanIcon },
-        { value: 'dropped',   label: 'Dropped',      Icon: DroppedIcon },
-    ];
     const currentListLabel = readingListStatus
         ? (LIST_OPTIONS.find(o => o.value === readingListStatus)?.label || 'Add to List')
         : 'Add to List';
 
-    function fmtReads(n) {
-        if (!n) return '0';
-        if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
-        if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
-        return String(n);
-    }
+    const firstChapter = sortedChapters[sortedChapters.length - 1]; // oldest = first
+    const lastChapter = sortedChapters[0]; // newest = last
 
     return (
-        <div className="page-container fade-in" style={{ position: 'relative', ...adaptiveStyles }}>
+        <div className="page-container fade-in sd-page" style={{ position: 'relative', ...adaptiveStyles }}>
+            {/* Blurred backdrop */}
             <div className="asura-series-backdrop" style={{ backgroundImage: `url(${series.cover_url || '/demo/cover1.jpg'})` }} />
             <div className="asura-series-overlay" />
-            
-            <div className="asura-series-header">
-                {/* Left Column - Cover & Buttons */}
-                <div>
-                    <div className="series-cover" style={{ borderRadius: '6px', boxShadow: '0 8px 32px rgba(0,0,0,0.7)', overflow: 'hidden' }}>
-                        <img 
-                            src={series.cover_url || '/demo/cover1.jpg'} 
-                            alt={series.title} 
-                            style={{ borderRadius: '6px', width: '100%', display: 'block' }} 
+
+            {/* ── Main Header ── */}
+            <div className="sd-header">
+
+                {/* Cover */}
+                <div className="sd-cover-col">
+                    <div className="sd-cover-wrap">
+                        <img
+                            src={series.cover_url || '/demo/cover1.jpg'}
+                            alt={series.title}
+                            className="sd-cover-img"
                             crossOrigin="anonymous"
                             onLoad={(e) => setDominantColor(getDominantColor(e.target))}
                         />
                     </div>
-                    
-                    <div className="asura-action-buttons">
-                        {chapters.length > 0 && (
-                            <Link href={`/series/${series.slug || series.id}/chapter/${chapters[0].chapter_number}`} className="btn btn-primary" style={{ padding: '14px 0', fontSize: '1rem', letterSpacing: '0.5px' }}>
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                                Read First Chapter
-                            </Link>
+                </div>
+
+                {/* Info */}
+                <div className="sd-info-col">
+                    {/* Title */}
+                    <h1 className="sd-title">{series.title}</h1>
+
+                    {/* Description */}
+                    <div className="sd-desc-wrap">
+                        <p className="sd-desc" style={isLongDesc && !descExpanded ? {
+                            display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden'
+                        } : {}}>
+                            {descText}
+                        </p>
+                        {isLongDesc && (
+                            <button className="sd-desc-toggle" onClick={() => setDescExpanded(v => !v)}>
+                                {descExpanded ? 'Show less ▲' : 'Show more ▼'}
+                            </button>
                         )}
-                        {chapters.length > 1 && (
-                            <Link href={`/series/${series.slug || series.id}/chapter/${chapters[chapters.length - 1].chapter_number}`} className="btn btn-ghost" style={{ background: 'var(--bg-glass)' }}>
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                                Read Last Chapter
-                            </Link>
-                        )}
-                        <button className={`btn ${isFavorite ? 'btn-primary' : 'btn-ghost'}`} onClick={toggleFavorite} style={{ background: isFavorite ? 'var(--accent-light)' : 'rgba(255,255,255,0.05)' }}>
+                    </div>
+
+                    {/* Action Buttons Row */}
+                    <div className="sd-actions">
+                        <button
+                            className={`sd-btn ${isFavorite ? 'sd-btn-active' : 'sd-btn-outline'}`}
+                            onClick={toggleFavorite}
+                        >
                             <svg width="16" height="16" viewBox="0 0 24 24" fill={isFavorite ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>
                             {isFavorite ? 'Bookmarked' : 'Bookmark'}
                         </button>
+                        {firstChapter && (
+                            <Link href={`/series/${series.slug || series.id}/chapter/${firstChapter.chapter_number}`} className="sd-btn sd-btn-outline">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                                First Chapter
+                            </Link>
+                        )}
+                        {lastChapter && lastChapter.id !== firstChapter?.id && (
+                            <Link href={`/series/${series.slug || series.id}/chapter/${lastChapter.chapter_number}`} className="sd-btn sd-btn-outline">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                                Latest Chapter
+                            </Link>
+                        )}
+                    </div>
 
-                        {/* Reading List Dropdown */}
+                    {/* Big Stats */}
+                    <div className="sd-stats">
+                        <div className="sd-stat">
+                            <div className="sd-stat-icon" style={{ color: '#f59e0b' }}>
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
+                            </div>
+                            <span className="sd-stat-value">{series.rating?.toFixed(1) || '0.0'}</span>
+                            <span className="sd-stat-label">Rating</span>
+                        </div>
+                        <div className="sd-stat">
+                            <div className="sd-stat-icon" style={{ color: '#818cf8' }}>
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></svg>
+                            </div>
+                            <span className="sd-stat-value">{chapters.length}</span>
+                            <span className="sd-stat-label">Chapters</span>
+                        </div>
+                        <div className="sd-stat">
+                            <div className="sd-stat-icon" style={{ color: '#34d399' }}>
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                            </div>
+                            <span className="sd-stat-value">{fmtNum(series.views)}</span>
+                            <span className="sd-stat-label">Views</span>
+                        </div>
+                    </div>
+
+                    {/* Meta details */}
+                    <div className="sd-meta-grid">
+                        <div className="sd-meta-row">
+                            <span className="sd-meta-key">Status</span>
+                            <span className="sd-meta-val">
+                                <span className={`sd-status-dot ${series.status === 'ongoing' ? 'ongoing' : 'completed'}`} />
+                                {series.status === 'ongoing' ? 'Ongoing' : 'Completed'}
+                            </span>
+                        </div>
+                        {series.type && (
+                            <div className="sd-meta-row">
+                                <span className="sd-meta-key">Type</span>
+                                <span className="sd-meta-val">
+                                    <span className="sd-status-dot" style={{ background: '#818cf8' }} />
+                                    {series.type.toUpperCase()}
+                                </span>
+                            </div>
+                        )}
+                        {series.author && (
+                            <div className="sd-meta-row">
+                                <span className="sd-meta-key">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                    Author
+                                </span>
+                                <span className="sd-meta-val">{series.author}</span>
+                            </div>
+                        )}
+                        {series.artist && series.artist !== series.author && (
+                            <div className="sd-meta-row">
+                                <span className="sd-meta-key">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+                                    Artist
+                                </span>
+                                <span className="sd-meta-val">{series.artist}</span>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Genres */}
+                    {genres.length > 0 && (
+                        <div className="sd-genres">
+                            {genres.map((g, i) => (
+                                <span key={i} className="sd-genre-tag">{g}</span>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Share + Add to List */}
+                    <div className="sd-bottom-actions">
                         {user && (
-                            <div className="reading-list-dropdown-wrapper" style={{ position: 'relative' }}>
+                            <div className="reading-list-dropdown-wrapper sd-reading-list-wrapper">
                                 <button
-                                    className="btn btn-ghost"
+                                    className={`sd-btn ${readingListStatus ? 'sd-btn-list-active' : 'sd-btn-outline'}`}
                                     onClick={() => setShowListDropdown(v => !v)}
-                                    style={{
-                                        background: readingListStatus ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.05)',
-                                        color: readingListStatus ? '#60a5fa' : undefined,
-                                        gap: 8,
-                                        width: '100%',
-                                        justifyContent: 'center',
-                                        borderColor: readingListStatus ? 'rgba(96,165,250,0.3)' : undefined,
-                                    }}
+                                    style={{ gap: 8 }}
                                 >
-                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
                                     {currentListLabel}
                                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginLeft: 'auto', transition: 'transform 0.2s', transform: showListDropdown ? 'rotate(180deg)' : 'none' }}><path d="m6 9 6 6 6-6"/></svg>
                                 </button>
                                 {showListDropdown && (
                                     <div className="reading-list-dropdown">
                                         {LIST_OPTIONS.map(opt => (
-                                            <button
-                                                key={opt.value}
-                                                onClick={() => updateReadingList(opt.value)}
-                                                className={`rld-item ${readingListStatus === opt.value ? 'active' : ''}`}
-                                            >
+                                            <button key={opt.value} onClick={() => updateReadingList(opt.value)} className={`rld-item ${readingListStatus === opt.value ? 'active' : ''}`}>
                                                 <opt.Icon />
                                                 <span>{opt.label}</span>
-                                                {readingListStatus === opt.value && (
-                                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginLeft: 'auto' }}><polyline points="20 6 9 17 4 12"/></svg>
-                                                )}
+                                                {readingListStatus === opt.value && <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginLeft: 'auto' }}><polyline points="20 6 9 17 4 12"/></svg>}
                                             </button>
                                         ))}
                                         {readingListStatus && (
                                             <button onClick={() => updateReadingList(null)} className="rld-item rld-remove">
-                                                <RemoveIcon />
-                                                <span>Remove from List</span>
+                                                <RemoveIcon /><span>Remove from List</span>
                                             </button>
                                         )}
                                     </div>
                                 )}
                             </div>
                         )}
-                    </div>
-                </div>
-
-                {/* Right Column - Info */}
-                <div style={{ zIndex: 1 }}>
-                    <h1 style={{ fontSize: 'clamp(1.3rem, 4vw, 2.4rem)', fontWeight: 800, textTransform: 'uppercase', marginBottom: '4px', letterSpacing: '-0.5px', lineHeight: 1.1 }}>{series.title}</h1>
-                    {(series.author || series.artist) && (
-                        <div style={{ color: 'var(--text-muted)', fontSize: '0.95rem', marginBottom: '16px' }}>
-                            {[series.author, series.artist].filter(Boolean).join(' · ')}
-                        </div>
-                    )}
-                    
-                    {/* Info Card */}
-                    <div className="series-info-card">
-                        <div className="sic-item">
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="var(--warning)" style={{ flexShrink: 0 }}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
-                            <span className="sic-value">{series.rating?.toFixed(1) || '0.0'}</span>
-                            <span className="sic-label">Rating</span>
-                        </div>
-                        <div className="sic-divider" />
-                        <div className="sic-item">
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" strokeWidth="2" style={{ flexShrink: 0 }}><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
-                            <span className="sic-value">{(series.views || 0).toLocaleString()}</span>
-                            <span className="sic-label">Views</span>
-                        </div>
-                        <div className="sic-divider" />
-                        <div className="sic-item">
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={series.status === 'ongoing' ? '#10b981' : '#60a5fa'} strokeWidth="2" style={{ flexShrink: 0 }}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                            <span className="sic-value" style={{ color: series.status === 'ongoing' ? '#10b981' : '#60a5fa', textTransform: 'capitalize' }}>{series.status || 'ongoing'}</span>
-                            <span className="sic-label">Status</span>
-                        </div>
-                        <div className="sic-divider" />
-                        <div className="sic-item">
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" style={{ flexShrink: 0 }}><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></svg>
-                            <span className="sic-value">{chapters.length}</span>
-                            <span className="sic-label">Chapters</span>
-                        </div>
-                    </div>
-
-                    {/* Genres */}
-                    {genres.length > 0 && (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '20px' }}>
-                            {genres.map((g, i) => (
-                                <span key={i} className="series-genre-tag">{g}</span>
-                            ))}
-                        </div>
-                    )}
-
-                    {/* Description */}
-                    <div style={{ position: 'relative', marginBottom: '20px' }}>
-                        <div className="series-description-box">
-                            <p style={{ 
-                                color: 'var(--text-secondary)', lineHeight: 1.65, fontSize: '0.93rem', margin: 0,
-                                ...(isLongDesc && !descExpanded ? {
-                                    display: '-webkit-box',
-                                    WebkitLineClamp: 4,
-                                    WebkitBoxOrient: 'vertical',
-                                    overflow: 'hidden',
-                                } : {})
-                            }}>
-                                {descText}
-                            </p>
-                        </div>
-                        {isLongDesc && (
-                            <button 
-                                onClick={() => setDescExpanded(!descExpanded)}
-                                style={{ 
-                                    background: 'none', border: 'none', color: 'var(--accent-light)', 
-                                    cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600, 
-                                    padding: '6px 0', display: 'flex', alignItems: 'center', gap: 4
-                                }}
-                            >
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <path d={descExpanded ? "m18 15-6-6-6 6" : "m6 9 6 6 6-6"} />
-                                </svg>
-                                {descExpanded ? 'Show Less' : 'Show More'}
-                            </button>
-                        )}
-                    </div>
-
-                    {/* Share button only */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <button className="btn btn-ghost btn-sm" onClick={shareSeries} style={{ background: 'var(--bg-glass)' }}>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" /></svg>
+                        <button className="sd-btn sd-btn-outline sd-share-btn" onClick={shareSeries}>
                             {copied ? (
-                                <>
-                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--success)" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                                    Copied!
-                                </>
-                            ) : 'Share'}
+                                <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--success)" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg> Copied!</>
+                            ) : (
+                                <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg> Share</>
+                            )}
                         </button>
                     </div>
                 </div>
             </div>
 
-            {/* Chapter List */}
-            <div style={{ marginTop: '32px' }}>
-                <div className="chapter-list-header">
+            {/* ── Chapter List ── */}
+            <div className="sd-chapters-section">
+                <div className="sd-chapters-header">
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></svg>
-                        <h2 className="section-title" style={{ margin: 0 }}>Chapters</h2>
-                        <span className="chapter-count-badge">{chapters.length}</span>
+                        <h2 className="sd-chapters-title">{chapters.length} Chapters</h2>
                     </div>
                     {chapters.length > 1 && (
-                        <button className="btn btn-ghost btn-sm" onClick={() => setSortDesc(!sortDesc)} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8rem' }}>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d={sortDesc ? "M11 17l-4 4-4-4M7 21V3M21 3v18" : "M11 7l-4-4-4 4M7 3v18M21 21V3"} />
-                            </svg>
-                            {sortDesc ? 'Newest First' : 'Oldest First'}
+                        <button className="sd-sort-btn" onClick={() => setSortDesc(v => !v)}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d={sortDesc ? "M11 17l-4 4-4-4M7 21V3M21 3v18" : "M11 7l-4-4-4 4M7 3v18M21 21V3"}/></svg>
+                            {sortDesc ? 'Newest' : 'Oldest'}
                         </button>
                     )}
                 </div>
+
+                {/* Search */}
+                {chapters.length > 5 && (
+                    <div className="sd-chapter-search-wrap">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="sd-search-icon"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <input
+                            type="text"
+                            className="sd-chapter-search"
+                            placeholder="Search chapters..."
+                            value={chapterSearch}
+                            onChange={e => setChapterSearch(e.target.value)}
+                        />
+                        {chapterSearch && (
+                            <button className="sd-search-clear" onClick={() => setChapterSearch('')}>
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                            </button>
+                        )}
+                    </div>
+                )}
+
                 {chapters.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-muted)', fontSize: '0.88rem' }}>
-                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ margin: '0 auto 12px' }}><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></svg>
+                    <div className="sd-empty-chapters">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
                         No chapters available yet. Check back soon!
                     </div>
+                ) : filteredChapters.length === 0 ? (
+                    <div className="sd-empty-chapters">No chapters match your search.</div>
                 ) : (
                     <>
-                        <div className="chapter-list-grid">
+                        <div className="sd-chapter-list">
                             {visibleChapters.map(ch => (
                                 <Link
                                     key={ch.id}
                                     href={`/series/${series.slug || series.id}/chapter/${ch.chapter_number}`}
-                                    className="chapter-list-row"
+                                    className="sd-chapter-row"
                                 >
-                                    <div className="clr-left">
-                                        <span className="clr-number">Ch. {Number(ch.chapter_number) % 1 === 0 ? Math.floor(ch.chapter_number) : ch.chapter_number}</span>
+                                    <div className="sdcr-left">
+                                        <span className="sdcr-number">Chapter {Number(ch.chapter_number) % 1 === 0 ? Math.floor(ch.chapter_number) : ch.chapter_number}</span>
                                         {ch.title && ch.title !== `Chapter ${ch.chapter_number}` && (
-                                            <span className="clr-title">— {ch.title}</span>
+                                            <span className="sdcr-title">{ch.title}</span>
                                         )}
                                     </div>
-                                    <div className="clr-right">
+                                    <div className="sdcr-right">
                                         {ch.read_count > 0 && (
-                                            <span className="clr-reads">
-                                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                                                {fmtReads(ch.read_count)}
+                                            <span className="sdcr-reads">
+                                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                                {fmtNum(ch.read_count)}
                                             </span>
                                         )}
-                                        {ch.availableLanguages && ch.availableLanguages.length > 0 && (
-                                            <div style={{ display: 'flex', gap: 3 }}>
-                                                {ch.availableLanguages.map(lang => (
-                                                    <span key={lang} className="chapter-lang-badge">{lang.toUpperCase()}</span>
-                                                ))}
-                                            </div>
-                                        )}
-                                        <span className="clr-date">{new Date(ch.created_at).toLocaleDateString()}</span>
+                                        <span className="sdcr-date">{new Date(ch.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
                                     </div>
                                 </Link>
                             ))}
                         </div>
                         {hasMore && (
-                            <button
-                                onClick={() => setShowAllChapters(v => !v)}
-                                className="btn btn-ghost chapter-show-more-btn"
-                            >
+                            <button onClick={() => setShowAllChapters(v => !v)} className="sd-show-more-btn">
                                 {showAllChapters ? (
-                                    <>
-                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m18 15-6-6-6 6"/></svg>
-                                        Show Less
-                                    </>
+                                    <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m18 15-6-6-6 6"/></svg> Show Less</>
                                 ) : (
-                                    <>
-                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m6 9 6 6 6-6"/></svg>
-                                        Show All {chapters.length} Chapters
-                                    </>
+                                    <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m6 9 6 6 6-6"/></svg> Show All {chapters.length} Chapters</>
                                 )}
                             </button>
                         )}
@@ -459,17 +469,17 @@ export default function SeriesDetailPage() {
                 )}
             </div>
 
-            {/* Series Comments */}
+            {/* ── Comments ── */}
             <div style={{ marginTop: 40, borderTop: '1px solid var(--border)', paddingTop: 32 }}>
                 <CommentSection seriesId={series?.id} />
             </div>
 
-            {/* You May Also Like */}
+            {/* ── You May Also Like ── */}
             {relatedSeries.length > 0 && (
                 <div style={{ marginTop: 40 }}>
                     <div className="section-header">
                         <h2 className="section-title">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="8.5" cy="7" r="4" /><path d="M20 8v6" /><path d="M23 11h-6" /></svg>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><path d="M20 8v6"/><path d="M23 11h-6"/></svg>
                             You May Also Like
                         </h2>
                         <Link href="/series" className="section-link">View All →</Link>
