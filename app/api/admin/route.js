@@ -84,13 +84,24 @@ export async function POST(request) {
             let coverUrl = '/demo/cover1.jpg';
             const coverFile = formData.get('cover');
             if (coverFile && coverFile.size > 0) {
-                const coverDir = path.join(process.cwd(), 'public', 'uploads', 'covers');
-                if (!fs.existsSync(coverDir)) fs.mkdirSync(coverDir, { recursive: true });
-                const fileName = `cover_${uuidv4()}.webp`;
-                const rawBuffer = Buffer.from(await coverFile.arrayBuffer());
-                const webpBuffer = await toWebP(rawBuffer, 90);
-                fs.writeFileSync(path.join(coverDir, fileName), webpBuffer);
-                coverUrl = `/uploads/covers/${fileName}`;
+                try {
+                    const coverDir = path.join(process.cwd(), 'public', 'uploads', 'covers');
+                    if (!fs.existsSync(coverDir)) fs.mkdirSync(coverDir, { recursive: true });
+                    const rawBuffer = Buffer.from(await coverFile.arrayBuffer());
+                    let fileBuffer, fileName;
+                    try {
+                        fileBuffer = await toWebP(rawBuffer, 90);
+                        fileName = `cover_${uuidv4()}.webp`;
+                    } catch {
+                        fileBuffer = rawBuffer;
+                        const ext = path.extname(coverFile.name || '') || '.jpg';
+                        fileName = `cover_${uuidv4()}${ext}`;
+                    }
+                    fs.writeFileSync(path.join(coverDir, fileName), fileBuffer);
+                    coverUrl = `/uploads/covers/${fileName}`;
+                } catch (coverErr) {
+                    console.error('Cover upload error:', coverErr.message);
+                }
             }
 
             const slug = makeUniqueSlug(db, title);
@@ -117,13 +128,24 @@ export async function POST(request) {
             let coverUrl = null;
             const coverFile = formData.get('cover');
             if (coverFile && coverFile.size > 0) {
-                const coverDir = path.join(process.cwd(), 'public', 'uploads', 'covers');
-                if (!fs.existsSync(coverDir)) fs.mkdirSync(coverDir, { recursive: true });
-                const fileName = `cover_${uuidv4()}.webp`;
-                const rawBuffer = Buffer.from(await coverFile.arrayBuffer());
-                const webpBuffer = await toWebP(rawBuffer, 90);
-                fs.writeFileSync(path.join(coverDir, fileName), webpBuffer);
-                coverUrl = `/uploads/covers/${fileName}`;
+                try {
+                    const coverDir = path.join(process.cwd(), 'public', 'uploads', 'covers');
+                    if (!fs.existsSync(coverDir)) fs.mkdirSync(coverDir, { recursive: true });
+                    const rawBuffer = Buffer.from(await coverFile.arrayBuffer());
+                    let fileBuffer, fileName;
+                    try {
+                        fileBuffer = await toWebP(rawBuffer, 90);
+                        fileName = `cover_${uuidv4()}.webp`;
+                    } catch {
+                        fileBuffer = rawBuffer;
+                        const ext = path.extname(coverFile.name || '') || '.jpg';
+                        fileName = `cover_${uuidv4()}${ext}`;
+                    }
+                    fs.writeFileSync(path.join(coverDir, fileName), fileBuffer);
+                    coverUrl = `/uploads/covers/${fileName}`;
+                } catch (coverErr) {
+                    console.error('Cover update error:', coverErr.message);
+                }
             }
 
             // Regenerate slug if title changed
@@ -211,6 +233,15 @@ export async function POST(request) {
 
             if (!files || files.length === 0) return NextResponse.json({ error: 'No files uploaded' }, { status: 400 });
 
+            // Filter to only actual image files (skip hidden files, system files, etc.)
+            const VALID_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'image/avif'];
+            const imageFiles = files.filter(f =>
+                f && typeof f.arrayBuffer === 'function' && f.size > 0 &&
+                (VALID_IMAGE_TYPES.includes(f.type) || /\.(jpe?g|png|webp|gif|avif)$/i.test(f.name || ''))
+            );
+
+            if (imageFiles.length === 0) return NextResponse.json({ error: 'No valid image files found' }, { status: 400 });
+
             // Get the current max page number for this chapter
             const maxPage = db.prepare('SELECT MAX(page_number) as max FROM pages WHERE chapter_id = ?').get(chapterId);
             const startNum = (maxPage?.max || 0) + 1;
@@ -219,26 +250,40 @@ export async function POST(request) {
             if (!fs.existsSync(pagesDir)) fs.mkdirSync(pagesDir, { recursive: true });
 
             const uploaded = [];
-            for (let i = 0; i < files.length; i++) {
-                const file = files[i];
-                const pageNum = startNum + i;
-                const fileName = `page_${String(pageNum).padStart(3, '0')}.webp`;
-                const rawBuffer = Buffer.from(await file.arrayBuffer());
-                let webpBuffer;
-                try {
-                    webpBuffer = await toWebP(rawBuffer, 85);
-                } catch {
-                    // Fallback: save original if conversion fails (e.g. unsupported format)
-                    webpBuffer = rawBuffer;
-                }
-                fs.writeFileSync(path.join(pagesDir, fileName), webpBuffer);
+            const errors = [];
+            let pageNum = startNum;
 
-                const imagePath = `/uploads/pages/${chapterId}/${fileName}`;
-                db.prepare('INSERT INTO pages (chapter_id, page_number, image_path) VALUES (?, ?, ?)').run(chapterId, pageNum, imagePath);
-                uploaded.push(imagePath);
+            for (const file of imageFiles) {
+                try {
+                    const rawBuffer = Buffer.from(await file.arrayBuffer());
+                    let savedFileName;
+                    try {
+                        // Try to convert to WebP
+                        const webpBuffer = await toWebP(rawBuffer, 85);
+                        savedFileName = `page_${String(pageNum).padStart(3, '0')}.webp`;
+                        fs.writeFileSync(path.join(pagesDir, savedFileName), webpBuffer);
+                    } catch (convErr) {
+                        // Fallback: save with original extension if WebP conversion fails
+                        console.warn(`WebP conversion failed for ${file.name}, saving original:`, convErr.message);
+                        const origExt = (path.extname(file.name || '') || '.jpg').toLowerCase().replace('.jpeg', '.jpg');
+                        savedFileName = `page_${String(pageNum).padStart(3, '0')}${origExt}`;
+                        fs.writeFileSync(path.join(pagesDir, savedFileName), rawBuffer);
+                    }
+                    const imagePath = `/uploads/pages/${chapterId}/${savedFileName}`;
+                    db.prepare('INSERT INTO pages (chapter_id, page_number, image_path) VALUES (?, ?, ?)').run(chapterId, pageNum, imagePath);
+                    uploaded.push(imagePath);
+                    pageNum++;
+                } catch (fileErr) {
+                    console.error(`Failed to process file ${file.name}:`, fileErr.message);
+                    errors.push(file.name || `file-${pageNum}`);
+                }
             }
 
-            return NextResponse.json({ uploaded, message: `${uploaded.length} pages uploaded` }, { status: 201 });
+            return NextResponse.json({
+                uploaded,
+                errors,
+                message: `${uploaded.length} pages uploaded${errors.length ? `, ${errors.length} failed` : ''}`
+            }, { status: 201 });
         }
 
         if (action === 'delete-page') {
