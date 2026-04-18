@@ -10,6 +10,7 @@ import {
 import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
+import sharp from 'sharp';
 
 function makeUniqueSlug(db, title, excludeId = null) {
     let base = generateSlug(title);
@@ -28,7 +29,7 @@ function makeUniqueSlug(db, title, excludeId = null) {
     return slug;
 }
 
-// ── Download cover from URL ──────────────────────────────────────────────────
+// ── Download cover from URL (always saves as WebP) ──────────────────────────
 async function downloadCover(imageUrl, title) {
     try {
         const coverDir = path.join(process.cwd(), 'public', 'uploads', 'covers');
@@ -40,14 +41,16 @@ async function downloadCover(imageUrl, title) {
             }
         });
         if (!res.ok) return null;
-        const contentType = res.headers.get('content-type') || '';
-        let ext = '.jpg';
-        if (contentType.includes('png')) ext = '.png';
-        else if (contentType.includes('webp')) ext = '.webp';
+        const rawBuffer = Buffer.from(await res.arrayBuffer());
         const slug = generateSlug(title) || uuidv4();
-        const fileName = `cover_${slug}_${uuidv4().split('-')[0]}${ext}`;
-        const buffer = Buffer.from(await res.arrayBuffer());
-        fs.writeFileSync(path.join(coverDir, fileName), buffer);
+        const fileName = `cover_${slug}_${uuidv4().split('-')[0]}.webp`;
+        let webpBuffer;
+        try {
+            webpBuffer = await sharp(rawBuffer).webp({ quality: 90 }).toBuffer();
+        } catch {
+            webpBuffer = rawBuffer; // fallback: save raw if sharp fails
+        }
+        fs.writeFileSync(path.join(coverDir, fileName), webpBuffer);
         return `/uploads/covers/${fileName}`;
     } catch {
         return null;

@@ -6,6 +6,12 @@ import { saveApiKey, getActiveApiKey, SUPPORTED_LANGUAGES } from '@/lib/torii';
 import fs from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
+import sharp from 'sharp';
+
+// ── Convert any image buffer to WebP ─────────────────────────────────────────
+async function toWebP(buffer, quality = 85) {
+    return sharp(buffer).webp({ quality }).toBuffer();
+}
 
 // Recursively calculate directory size in bytes
 function getDirSize(dirPath) {
@@ -80,10 +86,10 @@ export async function POST(request) {
             if (coverFile && coverFile.size > 0) {
                 const coverDir = path.join(process.cwd(), 'public', 'uploads', 'covers');
                 if (!fs.existsSync(coverDir)) fs.mkdirSync(coverDir, { recursive: true });
-                const ext = path.extname(coverFile.name) || '.jpg';
-                const fileName = `cover_${uuidv4()}${ext}`;
-                const buffer = Buffer.from(await coverFile.arrayBuffer());
-                fs.writeFileSync(path.join(coverDir, fileName), buffer);
+                const fileName = `cover_${uuidv4()}.webp`;
+                const rawBuffer = Buffer.from(await coverFile.arrayBuffer());
+                const webpBuffer = await toWebP(rawBuffer, 90);
+                fs.writeFileSync(path.join(coverDir, fileName), webpBuffer);
                 coverUrl = `/uploads/covers/${fileName}`;
             }
 
@@ -113,10 +119,10 @@ export async function POST(request) {
             if (coverFile && coverFile.size > 0) {
                 const coverDir = path.join(process.cwd(), 'public', 'uploads', 'covers');
                 if (!fs.existsSync(coverDir)) fs.mkdirSync(coverDir, { recursive: true });
-                const ext = path.extname(coverFile.name) || '.jpg';
-                const fileName = `cover_${uuidv4()}${ext}`;
-                const buffer = Buffer.from(await coverFile.arrayBuffer());
-                fs.writeFileSync(path.join(coverDir, fileName), buffer);
+                const fileName = `cover_${uuidv4()}.webp`;
+                const rawBuffer = Buffer.from(await coverFile.arrayBuffer());
+                const webpBuffer = await toWebP(rawBuffer, 90);
+                fs.writeFileSync(path.join(coverDir, fileName), webpBuffer);
                 coverUrl = `/uploads/covers/${fileName}`;
             }
 
@@ -215,11 +221,17 @@ export async function POST(request) {
             const uploaded = [];
             for (let i = 0; i < files.length; i++) {
                 const file = files[i];
-                const ext = path.extname(file.name) || '.jpg';
                 const pageNum = startNum + i;
-                const fileName = `page_${String(pageNum).padStart(3, '0')}${ext}`;
-                const buffer = Buffer.from(await file.arrayBuffer());
-                fs.writeFileSync(path.join(pagesDir, fileName), buffer);
+                const fileName = `page_${String(pageNum).padStart(3, '0')}.webp`;
+                const rawBuffer = Buffer.from(await file.arrayBuffer());
+                let webpBuffer;
+                try {
+                    webpBuffer = await toWebP(rawBuffer, 85);
+                } catch {
+                    // Fallback: save original if conversion fails (e.g. unsupported format)
+                    webpBuffer = rawBuffer;
+                }
+                fs.writeFileSync(path.join(pagesDir, fileName), webpBuffer);
 
                 const imagePath = `/uploads/pages/${chapterId}/${fileName}`;
                 db.prepare('INSERT INTO pages (chapter_id, page_number, image_path) VALUES (?, ?, ?)').run(chapterId, pageNum, imagePath);
