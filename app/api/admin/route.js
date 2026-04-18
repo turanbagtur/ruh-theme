@@ -233,11 +233,15 @@ export async function POST(request) {
 
             if (!files || files.length === 0) return NextResponse.json({ error: 'No files uploaded' }, { status: 400 });
 
-            // Filter to only actual image files (skip hidden files, system files, etc.)
-            const VALID_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'image/avif'];
+            // Filter to only actual image files — also match by extension since Windows folder
+            // picker often sends files with f.type="" even for valid JPGs
+            const IMAGE_EXT = /\.(jpe?g|jpg|png|webp|gif|avif|bmp)$/i;
             const imageFiles = files.filter(f =>
                 f && typeof f.arrayBuffer === 'function' && f.size > 0 &&
-                (VALID_IMAGE_TYPES.includes(f.type) || /\.(jpe?g|png|webp|gif|avif)$/i.test(f.name || ''))
+                (
+                    (f.type && f.type.startsWith('image/')) ||
+                    IMAGE_EXT.test(f.name || '')
+                )
             );
 
             if (imageFiles.length === 0) return NextResponse.json({ error: 'No valid image files found' }, { status: 400 });

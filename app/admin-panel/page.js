@@ -361,8 +361,11 @@ export default function AdminPanelPage() {
         e.preventDefault();
         if (!bulkFiles || !bulkFiles.length) return show('Select a folder first', 'error');
 
-        // Filter for images only
-        const imageFiles = Array.from(bulkFiles).filter(f => f.type.startsWith('image/'));
+        // Filter for images only — also check extension because Windows often reports f.type="" for JPGs from folder picker
+        const IMAGE_EXTS = /\.(jpe?g|jpg|png|webp|gif|avif|bmp)$/i;
+        const imageFiles = Array.from(bulkFiles).filter(f =>
+            (f.type && f.type.startsWith('image/')) || IMAGE_EXTS.test(f.name || '')
+        );
         if (imageFiles.length === 0) return show('No images found in the selected folder.', 'error');
         if (!window.confirm(`Found ${imageFiles.length} image files. Group into chapters and upload?`)) return;
 
