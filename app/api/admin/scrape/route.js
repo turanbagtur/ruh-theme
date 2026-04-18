@@ -337,7 +337,11 @@ export async function POST(request) {
         return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
     } catch (err) {
         console.error('/api/admin/scrape POST error:', err);
-        return NextResponse.json({ error: err.message || 'Scraper error' }, { status: 500 });
+        const isCloudflare = err.message?.startsWith('CLOUDFLARE_PROTECTED');
+        const userMessage = isCloudflare
+            ? err.message.replace('CLOUDFLARE_PROTECTED: ', '')
+            : (err.message || 'Scraper error');
+        return NextResponse.json({ error: userMessage, cloudflare: isCloudflare }, { status: isCloudflare ? 422 : 500 });
     }
 }
 

@@ -213,9 +213,6 @@ export default function SeriesDetailPage() {
 
     return (
         <div className="page-container fade-in sd-page" style={{ position: 'relative', ...adaptiveStyles }}>
-            {/* Blurred backdrop */}
-            <div className="asura-series-backdrop" style={{ backgroundImage: `url(${series.cover_url || '/demo/cover1.jpg'})` }} />
-            <div className="asura-series-overlay" />
 
             {/* ── Main Header ── */}
             <div className="sd-header">
