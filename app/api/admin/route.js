@@ -420,6 +420,10 @@ export async function GET(request) {
 
         // Media listing
         if (action === 'list-media') {
+            const page = parseInt(searchParams.get('page')) || 1;
+            const limit = parseInt(searchParams.get('limit')) || 50;
+            const categoryFilter = searchParams.get('category') || 'all';
+            
             const mediaFiles = [];
             const uploadsBase = path.join(process.cwd(), 'public', 'uploads');
             const scanDir = (dirPath, category) => {
@@ -430,6 +434,9 @@ export async function GET(request) {
                         if (entry.isDirectory()) {
                             scanDir(full, category);
                         } else if (/\.(jpg|jpeg|png|gif|webp|svg)$/i.test(entry.name)) {
+                            // Apply category filter instantly if requested 
+                            if (categoryFilter !== 'all' && categoryFilter !== category) continue;
+                            
                             try {
                                 const stat = fs.statSync(full);
                                 const relativePath = full.replace(path.join(process.cwd(), 'public'), '').replace(/\\/g, '/');
@@ -449,8 +456,15 @@ export async function GET(request) {
             scanDir(path.join(uploadsBase, 'covers'), 'covers');
             scanDir(path.join(uploadsBase, 'avatars'), 'avatars');
             scanDir(path.join(uploadsBase, 'pages'), 'pages');
+            
             mediaFiles.sort((a, b) => new Date(b.modified) - new Date(a.modified));
-            return NextResponse.json({ media: mediaFiles, total: mediaFiles.length });
+            
+            const total = mediaFiles.length;
+            const offset = (page - 1) * limit;
+            const paginatedMedia = mediaFiles.slice(offset, offset + limit);
+            const hasMore = offset + limit < total;
+
+            return NextResponse.json({ media: paginatedMedia, total, hasMore });
         }
 
         // If requesting a specific series detail for admin
