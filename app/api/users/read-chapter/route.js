@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { getUserFromRequest } from '@/lib/auth';
+import { batchQueue } from '@/lib/queue';
 
 export async function POST(request) {
     try {
@@ -29,7 +30,7 @@ export async function POST(request) {
         
         if (existing) {
             // Still update reading_history for "Continue Reading" tracking
-            db.prepare('INSERT INTO reading_history (user_id, chapter_id, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP) ON CONFLICT(user_id, chapter_id) DO UPDATE SET updated_at = CURRENT_TIMESTAMP').run(userData.id, chapterId);
+            batchQueue.pushHistory(userData.id, chapterId);
             return NextResponse.json({ 
                 success: true, 
                 alreadyRead: true,
@@ -43,11 +44,12 @@ export async function POST(request) {
         const tx = db.transaction(() => {
             db.prepare('INSERT INTO read_history (user_id, chapter_id) VALUES (?, ?)').run(userData.id, chapterId);
             db.prepare('UPDATE users SET yomi_points = coalesce(yomi_points, 0) + ? WHERE id = ?').run(reward, userData.id);
-            // Track reading progress for "Continue Reading" feature
-            db.prepare('INSERT INTO reading_history (user_id, chapter_id, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP) ON CONFLICT(user_id, chapter_id) DO UPDATE SET updated_at = CURRENT_TIMESTAMP').run(userData.id, chapterId);
         });
         
         tx();
+
+        // Track reading progress async
+        batchQueue.pushHistory(userData.id, chapterId);
 
         // Get latest points to return to client
         const user = db.prepare('SELECT yomi_points FROM users WHERE id = ?').get(userData.id);

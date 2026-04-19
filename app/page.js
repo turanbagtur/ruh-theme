@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import SeriesCard from '@/components/SeriesCard';
 import { useAuth } from '@/components/AuthProvider';
 
@@ -165,7 +166,7 @@ export default function HomePage() {
               {popularSeries.map((s, i) => (
                 <div key={s.id} className="hero-slide">
                   <div className="hero-slide-bg">
-                    <img src={s.cover_url || '/demo/cover1.jpg'} alt={s.title} loading={i === 0 ? 'eager' : 'lazy'} />
+                    <Image src={s.cover_url || '/demo/cover1.jpg'} alt={s.title} fill sizes="(max-width: 768px) 100vw, 100vw" style={{ objectFit: 'cover' }} priority={i === 0} />
                   </div>
                   <div className="hero-slide-content">
                     <div className="hero-slide-meta">
@@ -197,7 +198,7 @@ export default function HomePage() {
                   </div>
                   {/* Cover thumbnail on right for larger screens */}
                   <div className="hero-slide-cover-thumb">
-                    <img src={s.cover_url || '/demo/cover1.jpg'} alt={s.title} loading={i === 0 ? 'eager' : 'lazy'} />
+                    <Image src={s.cover_url || '/demo/cover1.jpg'} alt={s.title} fill sizes="(max-width: 768px) 30vw, 250px" style={{ objectFit: 'cover' }} priority={i === 0} />
                   </div>
                 </div>
               ))}

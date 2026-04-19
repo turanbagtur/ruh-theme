@@ -18,6 +18,10 @@ export async function GET(request) {
         const { searchParams } = new URL(request.url);
         const chapterId = searchParams.get('chapterId');
         const seriesId = searchParams.get('seriesId');
+        const page = parseInt(searchParams.get('page')) || 1;
+        const limit = parseInt(searchParams.get('limit')) || 20;
+        const sort = searchParams.get('sort') || 'best';
+        const offset = (page - 1) * limit;
 
         const db = getDb();
 
@@ -47,6 +51,16 @@ export async function GET(request) {
             whereParam = seriesId;
         }
 
+        let orderByClause = 'c.created_at DESC';
+        if (sort === 'oldest') {
+            orderByClause = 'c.created_at ASC';
+        } else if (sort === 'best') {
+            orderByClause = `COALESCE((SELECT SUM(CASE WHEN r.emoji = '👍' THEN 1 WHEN r.emoji = '👎' THEN -1 ELSE 0 END) FROM reactions r WHERE r.comment_id = c.id), 0) DESC, c.created_at DESC`;
+        }
+
+        const totalQuery = db.prepare(`SELECT COUNT(*) as count FROM comments c WHERE ${whereClause} AND c.parent_id IS NULL`).get(whereParam);
+        const totalComments = totalQuery.count;
+
         const comments = db.prepare(`
             SELECT c.*, u.username, u.avatar_url, u.yomi_points,
                 (SELECT rank FROM (SELECT id, DENSE_RANK() OVER (ORDER BY yomi_points DESC) as rank FROM users) WHERE id = c.user_id) as leaderboard_rank,
@@ -54,8 +68,9 @@ export async function GET(request) {
             FROM comments c
             JOIN users u ON c.user_id = u.id
             WHERE ${whereClause} AND c.parent_id IS NULL
-            ORDER BY c.created_at DESC
-        `).all(whereParam);
+            ORDER BY ${orderByClause}
+            LIMIT ? OFFSET ?
+        `).all(whereParam, limit, offset);
 
         const commentsWithReactions = comments.map(comment => {
             const reactions = db.prepare(`
@@ -82,7 +97,11 @@ export async function GET(request) {
             return { ...comment, reactions, replies: repliesWithReactions };
         });
 
-        return NextResponse.json({ comments: commentsWithReactions });
+        return NextResponse.json({ 
+            comments: commentsWithReactions, 
+            hasMore: totalComments > offset + limit,
+            total: totalComments
+        });
     } catch (error) {
         console.error('GET /api/comments error:', error);
         return NextResponse.json({ error: 'Failed to fetch comments' }, { status: 500 });

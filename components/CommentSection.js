@@ -47,6 +47,10 @@ export default function CommentSection({ chapterId, seriesId }) {
     const [showEmojiPicker, setShowEmojiPicker] = useState(null);
     const [imageUrlModal, setImageUrlModal] = useState(false);
     const [imageUrl, setImageUrl] = useState('');
+    const [page, setPage] = useState(1);
+    const [hasMore, setHasMore] = useState(false);
+    const [totalComments, setTotalComments] = useState(0);
+    const [loadingMore, setLoadingMore] = useState(false);
     
     // Series Reactions Widget
     const [seriesReactCounts, setSeriesReactCounts] = useState({});
@@ -56,14 +60,14 @@ export default function CommentSection({ chapterId, seriesId }) {
     const menuRef = useRef(null);
 
     useEffect(() => {
-        fetchComments();
+        fetchComments(1, false);
         if (seriesId) fetchSeriesReactions();
         // Load localStorage reaction for guests
         if (seriesId && typeof window !== 'undefined') {
             const stored = localStorage.getItem(`series_reaction_${seriesId}`);
             if (stored && !user) setActiveReaction(stored);
         }
-    }, [contextId, seriesId]);
+    }, [contextId, seriesId, sortBy]);
 
     useEffect(() => {
         const handleClick = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setOpenMenu(null); };
@@ -139,14 +143,26 @@ export default function CommentSection({ chapterId, seriesId }) {
         } catch(err) { console.error(err); }
     }
 
-    async function fetchComments() {
+    async function fetchComments(pageNum = 1, append = false) {
+        if (!append) setLoading(true);
+        else setLoadingMore(true);
+
         try {
             const param = chapterId ? `chapterId=${chapterId}` : `seriesId=${seriesId}`;
-            const res = await fetch(`/api/comments?${param}`);
+            const res = await fetch(`/api/comments?${param}&page=${pageNum}&limit=20&sort=${sortBy}`);
             const data = await res.json();
-            if (data.comments) setComments(data.comments);
+            if (data.comments) {
+                if (append) {
+                    setComments(prev => [...prev, ...data.comments]);
+                } else {
+                    setComments(data.comments);
+                }
+                setHasMore(data.hasMore);
+                setTotalComments(data.total);
+                setPage(pageNum);
+            }
         } catch (err) { console.error(err); }
-        finally { setLoading(false); }
+        finally { setLoading(false); setLoadingMore(false); }
     }
 
     function showToast(msg) { setToast(msg); setTimeout(() => setToast(''), 3000); }
@@ -240,11 +256,7 @@ export default function CommentSection({ chapterId, seriesId }) {
     function getCount(c, emoji) { const r = (c.reactions || []).find(x => x.emoji === emoji); return r ? r.count : 0; }
     function isActive(c, emoji) { const r = (c.reactions || []).find(x => x.emoji === emoji); return r && user && r.user_ids?.split(',').includes(String(user.id)); }
 
-    const sortedComments = [...comments].sort((a, b) => {
-        if (sortBy === 'oldest') return new Date(a.created_at) - new Date(b.created_at);
-        if (sortBy === 'best') return (getCount(b, '👍') - getCount(b, '👎')) - (getCount(a, '👍') - getCount(a, '👎'));
-        return new Date(b.created_at) - new Date(a.created_at);
-    });
+    const sortedComments = comments;
 
     function insertFormat(prefix, suffix = '') {
         setNewComment(prev => prev + prefix + 'text' + suffix);
@@ -484,7 +496,7 @@ export default function CommentSection({ chapterId, seriesId }) {
 
             {/* 2. Comments Header & Sorters */}
             <div className="asura-comment-header">
-                <div className="asura-comment-title">{comments.length} Comments</div>
+                <div className="asura-comment-title">{totalComments} Comments</div>
                 <div className="asura-comment-sort">
                     <button className={sortBy === 'best' ? 'active' : ''} onClick={() => setSortBy('best')}>Best</button>
                     <button className={sortBy === 'newest' ? 'active' : ''} onClick={() => setSortBy('newest')}>Newest</button>
@@ -547,7 +559,20 @@ export default function CommentSection({ chapterId, seriesId }) {
             ) : comments.length === 0 ? (
                 <div className="empty-comments">No comments yet. Be the first!</div>
             ) : (
-                <div>{sortedComments.map(c => renderComment(c))}</div>
+                <>
+                    <div>{sortedComments.map(c => renderComment(c))}</div>
+                    {hasMore && (
+                        <div style={{ textAlign: 'center', marginTop: '20px' }}>
+                            <button 
+                                className="btn btn-secondary" 
+                                onClick={() => fetchComments(page + 1, true)}
+                                disabled={loadingMore}
+                            >
+                                {loadingMore ? 'Loading...' : 'Load More Comments'}
+                            </button>
+                        </div>
+                    )}
+                </>
             )}
 
             {/* Utility Modals */}
