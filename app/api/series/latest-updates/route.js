@@ -7,7 +7,9 @@ export async function GET(request) {
     try {
         const db = getDb();
         const { searchParams } = new URL(request.url);
-        const limit = parseInt(searchParams.get('limit')) || 15;
+        const limit = parseInt(searchParams.get('limit')) || 16;
+        const page = parseInt(searchParams.get('page')) || 1;
+        const offset = (page - 1) * limit;
 
         // Get distinct series IDs ordered by their most recent chapter upload
         const recentSeries = db.prepare(`
@@ -17,11 +19,11 @@ export async function GET(request) {
             WHERE s.published = 1
             GROUP BY s.id
             ORDER BY last_update DESC
-            LIMIT ?
-        `).all(limit);
+            LIMIT ? OFFSET ?
+        `).all(limit, offset);
 
         if (recentSeries.length === 0) {
-            return NextResponse.json({ updates: [] });
+            return NextResponse.json({ updates: [], hasMore: false });
         }
 
         // Fetch the latest 3 chapters per series in a single query — eliminates N+1
@@ -51,7 +53,9 @@ export async function GET(request) {
             chapters: chaptersBySeries[s.id] || [],
         }));
 
-        return NextResponse.json({ updates });
+        const hasMore = recentSeries.length === limit;
+
+        return NextResponse.json({ updates, hasMore });
     } catch (error) {
         console.error('GET /api/series/latest-updates error:', error);
         return NextResponse.json({ error: 'Failed to fetch latest updates' }, { status: 500 });

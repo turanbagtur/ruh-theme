@@ -9,6 +9,9 @@ export default function HomePage() {
   const { user, authFetch } = useAuth();
   const [popularSeries, setPopularSeries] = useState([]);
   const [latestUpdates, setLatestUpdates] = useState([]);
+  const [updatesPage, setUpdatesPage] = useState(1);
+  const [updatesHasMore, setUpdatesHasMore] = useState(false);
+  const [updatesLoadingMore, setUpdatesLoadingMore] = useState(false);
   const [readingHistory, setReadingHistory] = useState([]);
   const [trending, setTrending] = useState([]);
   const [editorPick, setEditorPick] = useState(null);
@@ -50,7 +53,7 @@ export default function HomePage() {
       try {
         const [popRes, updRes, trendRes, edRes, annRes, settRes] = await Promise.all([
           fetch('/api/series?sort=popular&limit=5'),
-          fetch('/api/series/latest-updates?limit=15'),
+          fetch('/api/series/latest-updates?limit=16&page=1'),
           fetch('/api/series/trending'),
           fetch('/api/series/editor-pick'),
           fetch('/api/announcements?active=true'),
@@ -65,6 +68,7 @@ export default function HomePage() {
 
         setPopularSeries(popData.series || []);
         setLatestUpdates(updData.updates || []);
+        setUpdatesHasMore(updData.hasMore || false);
         setTrending(trendData.series || []);
         setEditorPick(edData.series || null);
         setAnnouncements(annData.announcements || []);
@@ -89,6 +93,23 @@ export default function HomePage() {
     }
     fetchTop();
   }, [topPeriod]);
+
+  async function loadMoreUpdates() {
+    if (updatesLoadingMore || !updatesHasMore) return;
+    setUpdatesLoadingMore(true);
+    try {
+      const nextPage = updatesPage + 1;
+      const res = await fetch(`/api/series/latest-updates?limit=16&page=${nextPage}`);
+      const data = await res.json();
+      
+      if (data.updates) {
+        setLatestUpdates(prev => [...prev, ...data.updates]);
+      }
+      setUpdatesHasMore(data.hasMore || false);
+      setUpdatesPage(nextPage);
+    } catch (err) { console.error(err); }
+    finally { setUpdatesLoadingMore(false); }
+  }
 
   // Fetch real reading history if logged in
   useEffect(() => {
@@ -366,6 +387,18 @@ export default function HomePage() {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+            
+            {!loading && updatesHasMore && (
+              <div style={{ textAlign: 'center', marginTop: 24 }}>
+                <button 
+                  className="btn btn-secondary" 
+                  onClick={loadMoreUpdates} 
+                  disabled={updatesLoadingMore}
+                >
+                  {updatesLoadingMore ? 'Loading...' : 'Load More Updates'}
+                </button>
               </div>
             )}
           </div>
