@@ -15,9 +15,9 @@ export async function GET() {
     try {
         const db = getDb();
 
-        // All published series with their latest chapter date
+        // All published series with their latest chapter date + title for image SEO
         const series = db.prepare(`
-            SELECT s.id, s.slug, s.cover_url,
+            SELECT s.id, s.slug, s.title, s.cover_url, s.description,
                    MAX(ch.created_at) as latest_chapter_at,
                    s.created_at
             FROM series s
@@ -30,7 +30,7 @@ export async function GET() {
         // All published chapters for SEO-friendly URLs
         const chapters = db.prepare(`
             SELECT ch.chapter_number, ch.created_at,
-                   s.slug as series_slug
+                   s.slug as series_slug, s.title as series_title
             FROM chapters ch
             JOIN series s ON s.id = ch.series_id
             WHERE s.published = 1
@@ -77,6 +77,11 @@ export async function GET() {
                 ? (s.cover_url.startsWith('http') ? s.cover_url : `${BASE_URL}${s.cover_url}`)
                 : null;
 
+            // Short caption for Google Images
+            const caption = s.description
+                ? s.description.slice(0, 100).replace(/\s+$/, '') + (s.description.length > 100 ? '…' : '')
+                : `Read ${s.title} manga online with AI translation on YomiTranslate.`;
+
             xml += `  <url>
     <loc>${BASE_URL}/series/${escapeXml(slug)}</loc>
     <lastmod>${lastmod}</lastmod>
@@ -87,6 +92,8 @@ export async function GET() {
                 xml += `
     <image:image>
       <image:loc>${escapeXml(coverAbs)}</image:loc>
+      <image:title>${escapeXml(s.title)}</image:title>
+      <image:caption>${escapeXml(caption)}</image:caption>
     </image:image>`;
             }
 
