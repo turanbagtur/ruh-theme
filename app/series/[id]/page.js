@@ -42,21 +42,41 @@ export default async function SeriesDetailPage({ params }) {
         redirect(`/series/${series.slug}`);
     }
 
-    // Fetch chapters with available languages
-    const chapters = db.prepare(`
-        SELECT ch.*,
-               GROUP_CONCAT(DISTINCT ct.language) as availableLanguagesList
-        FROM chapters ch
-        LEFT JOIN chapter_translations ct ON ct.chapter_id = ch.id
-        WHERE ch.series_id = ?
-        GROUP BY ch.id
-        ORDER BY ch.chapter_number ASC
-    `).all(series.id).map(ch => ({
+    // Fetch chapters (same approach as /api/series/[id])
+    const chaptersRaw = db.prepare(
+        'SELECT * FROM chapters WHERE series_id = ? ORDER BY chapter_number ASC'
+    ).all(series.id);
+
+    // Fetch all available languages per chapter via translations → pages join
+    const allTranslations = db.prepare(`
+        SELECT DISTINCT p.chapter_id, t.language_code
+        FROM translations t
+        JOIN pages p ON t.page_id = p.id
+        WHERE p.chapter_id IN (SELECT id FROM chapters WHERE series_id = ?)
+    `).all(series.id);
+
+    // Fetch read counts per chapter
+    const readCounts = db.prepare(`
+        SELECT chapter_id, COUNT(*) as read_count
+        FROM read_history
+        WHERE chapter_id IN (SELECT id FROM chapters WHERE series_id = ?)
+        GROUP BY chapter_id
+    `).all(series.id);
+
+    const langsByChapter = {};
+    for (const row of allTranslations) {
+        if (!langsByChapter[row.chapter_id]) langsByChapter[row.chapter_id] = [];
+        langsByChapter[row.chapter_id].push(row.language_code);
+    }
+    const readCountByChapter = {};
+    for (const row of readCounts) {
+        readCountByChapter[row.chapter_id] = row.read_count;
+    }
+
+    const chapters = chaptersRaw.map(ch => ({
         ...ch,
-        availableLanguages: ch.availableLanguagesList
-            ? ch.availableLanguagesList.split(',').filter(Boolean)
-            : [],
-        availableLanguagesList: undefined,
+        availableLanguages: langsByChapter[ch.id] || [],
+        read_count: readCountByChapter[ch.id] || 0,
     }));
 
     // Fetch related series (server-side)
@@ -84,9 +104,7 @@ export default async function SeriesDetailPage({ params }) {
 
     // Serialize safely for client component props
     const seriesData = JSON.parse(JSON.stringify(series));
-    const chaptersData = JSON.parse(JSON.stringify(
-        chapters.map(ch => { const { availableLanguagesList, ...rest } = ch; return rest; })
-    ));
+    const chaptersData = JSON.parse(JSON.stringify(chapters));
     const relatedData = JSON.parse(JSON.stringify(relatedSeries));
 
     return (
