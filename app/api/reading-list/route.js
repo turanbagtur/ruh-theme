@@ -25,8 +25,8 @@ export async function GET(request) {
         let query = `
             SELECT rl.id, rl.series_id, rl.status, rl.updated_at,
                    s.title, s.cover_url, s.slug, s.type, s.genres,
-                   (SELECT COUNT(*) FROM chapters c WHERE c.series_id = s.id AND c.published = 1) as chapter_count,
-                   (SELECT MAX(chapter_number) FROM chapters c WHERE c.series_id = s.id AND c.published = 1) as latest_chapter,
+                   (SELECT COUNT(*) FROM chapters c WHERE c.series_id = s.id) as chapter_count,
+                   (SELECT MAX(chapter_number) FROM chapters c WHERE c.series_id = s.id) as latest_chapter,
                    (SELECT chapter_number FROM chapters c2
                     JOIN reading_history rh ON rh.chapter_id = c2.id
                     WHERE c2.series_id = s.id AND rh.user_id = ?
