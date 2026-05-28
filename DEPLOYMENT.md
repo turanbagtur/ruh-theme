@@ -1,6 +1,6 @@
-# 🚀 YomiTranslate — Sunucu Kurulum & Yayınlama Rehberi
+# 🚀 Ruh Theme — Sunucu Kurulum & Yayınlama Rehberi
 
-Bu rehber, YomiTranslate uygulamasını sıfırdan bir Ubuntu/Debian Linux VPS sunucusuna kurup yayınlamayı adım adım anlatır. Her adımı sırayla uygula.
+Bu rehber, Ruh Theme uygulamasını sıfırdan bir Ubuntu/Debian Linux VPS sunucusuna kurup yayınlamayı adım adım anlatır. Her adımı sırayla uygula.
 
 ---
 
@@ -104,19 +104,19 @@ Eğer projen GitHub/GitLab'da ise:
 mkdir -p /var/www
 cd /var/www
 git clone https://github.com/turanbagtur/ruh-theme.git
-cd yomitranslate
+cd ruh-theme
 ```
 
 ### Yöntem B — SCP ile (Git yoksa)
 
 Kendi Windows bilgisayarından PowerShell ile sunucuya kopyala:
 ```powershell
-scp -r "C:\Users\tbagt\OneDrive\Desktop\ruh-theme" root@SUNUCU_IP:/var/www/yomitranslate
+scp -r "C:\Users\tbagt\OneDrive\Desktop\ruh-theme" root@SUNUCU_IP:/var/www/ruh-theme
 ```
 
 Sonra sunucuda:
 ```bash
-cd /var/www/yomitranslate
+cd /var/www/ruh-theme
 ```
 
 > ⚠️ **ÖNEMLİ:** `.env.local` dosyasını Git'e asla yükleme! `.gitignore` zaten bu dosyayı hariç tutuyor. Sunucuda ayrıca oluşturacağız.
@@ -127,7 +127,7 @@ cd /var/www/yomitranslate
 
 Sunucuda `.env.local` dosyasını oluştur:
 ```bash
-cd /var/www/yomitranslate
+cd /var/www/ruh-theme
 nano .env.local
 ```
 
@@ -136,11 +136,6 @@ Aşağıdaki içeriği olduğu gibi yapıştır (`Ctrl+Shift+V` ile), sonra değ
 ```env
 # Next.js ortam
 NODE_ENV=production
-
-# Torii Translate API Anahtarı
-# https://toriitranslate.com adresinden alınır
-# Admin panelden de eklenebilir, burası opsiyonel
-TORII_API_KEY=sk_torii_BURAYA_KENDI_API_ANAHTARINI_YAZ
 
 # JWT Secret — kullanıcı oturumları için
 # Aşağıdaki komutla güçlü bir değer üret:
@@ -151,7 +146,7 @@ JWT_SECRET=BURAYA_COK_GUCLU_RASTGELE_BIR_DEGER_YAZ
 DATABASE_PATH=./data/manga.db
 
 # Sitenin tam URL'i
-NEXT_PUBLIC_BASE_URL=https://yomitranslate.com
+NEXT_PUBLIC_BASE_URL=https://ruhtheme.com
 ```
 
 Kaydet ve çık: `Ctrl+X`, ardından `Y`, ardından `Enter`.
@@ -170,20 +165,20 @@ openssl rand -hex 32
 
 ```bash
 # Veritabanı ve yükleme klasörlerini oluştur
-mkdir -p /var/www/yomitranslate/data
-mkdir -p /var/www/yomitranslate/public/uploads/covers
-mkdir -p /var/www/yomitranslate/public/uploads/pages
-mkdir -p /var/www/yomitranslate/public/translations
+mkdir -p /var/www/ruh-theme/data
+mkdir -p /var/www/ruh-theme/public/uploads/covers
+mkdir -p /var/www/ruh-theme/public/uploads/pages
+mkdir -p /var/www/ruh-theme/public/translations
 
 # Yedekleme klasörü
 mkdir -p /root/backups
 
 # İzinleri ayarla
-chown -R www-data:www-data /var/www/yomitranslate/public/uploads
-chown -R www-data:www-data /var/www/yomitranslate/public/translations
-chown -R www-data:www-data /var/www/yomitranslate/data
-chmod -R 755 /var/www/yomitranslate/public/uploads
-chmod -R 755 /var/www/yomitranslate/public/translations
+chown -R www-data:www-data /var/www/ruh-theme/public/uploads
+chown -R www-data:www-data /var/www/ruh-theme/public/translations
+chown -R www-data:www-data /var/www/ruh-theme/data
+chmod -R 755 /var/www/ruh-theme/public/uploads
+chmod -R 755 /var/www/ruh-theme/public/translations
 ```
 
 ---
@@ -191,7 +186,7 @@ chmod -R 755 /var/www/yomitranslate/public/translations
 ## 7️⃣ Bağımlılıkları Yükle & Derle
 
 ```bash
-cd /var/www/yomitranslate
+cd /var/www/ruh-theme
 
 # Bağımlılıkları yükle
 npm ci --production=false
@@ -221,18 +216,18 @@ npm install -g pm2
 
 ### 8.2 — Uygulamayı başlat
 ```bash
-cd /var/www/yomitranslate
-pm2 start npm --name "yomitranslate" -- start
+cd /var/www/ruh-theme
+pm2 start npm --name "ruh-theme" -- start
 ```
 
 ### 8.3 — Uygulamanın çalıştığını kontrol et
 ```bash
 pm2 status
 ```
-`yomitranslate` yanında `online` yazmalı.
+`ruh-theme` yanında `online` yazmalı.
 
 ```bash
-pm2 logs yomitranslate --lines 20
+pm2 logs ruh-theme --lines 20
 ```
 Hata yoksa devam et.
 
@@ -252,11 +247,11 @@ pm2 save
 ### PM2 Günlük Kullanım Komutları
 ```bash
 pm2 status                    # Durum kontrolü
-pm2 logs yomitranslate        # Anlık loglar
-pm2 logs yomitranslate --lines 100   # Son 100 satır log
-pm2 restart yomitranslate     # Yeniden başlat
-pm2 stop yomitranslate        # Durdur
-pm2 delete yomitranslate      # Tamamen kaldır
+pm2 logs ruh-theme        # Anlık loglar
+pm2 logs ruh-theme --lines 100   # Son 100 satır log
+pm2 restart ruh-theme     # Yeniden başlat
+pm2 stop ruh-theme        # Durdur
+pm2 delete ruh-theme      # Tamamen kaldır
 ```
 
 ---
@@ -277,7 +272,7 @@ rm -f /etc/nginx/sites-enabled/default
 
 ### 9.3 — Site konfigürasyonu oluştur
 ```bash
-nano /etc/nginx/sites-available/yomitranslate
+nano /etc/nginx/sites-available/ruh-theme
 ```
 
 Aşağıdaki konfigürasyonu olduğu gibi yapıştır:
@@ -285,7 +280,7 @@ Aşağıdaki konfigürasyonu olduğu gibi yapıştır:
 ```nginx
 server {
     listen 80;
-    server_name yomitranslate.com www.yomitranslate.com;
+    server_name ruhtheme.com www.ruhtheme.com;
 
     # Manga sayfaları ve kapak görselleri için yükleme limiti
     client_max_body_size 100M;
@@ -322,7 +317,7 @@ server {
 
     # Yüklenen görseller — Nginx doğrudan servis etsin
     location /uploads/ {
-        alias /var/www/yomitranslate/public/uploads/;
+        alias /var/www/ruh-theme/public/uploads/;
         expires 30d;
         add_header Cache-Control "public";
         access_log off;
@@ -340,7 +335,7 @@ Kaydet: `Ctrl+X`, `Y`, `Enter`.
 
 ### 9.4 — Siteyi aktifleştir
 ```bash
-ln -s /etc/nginx/sites-available/yomitranslate /etc/nginx/sites-enabled/
+ln -s /etc/nginx/sites-available/ruh-theme /etc/nginx/sites-enabled/
 
 # Konfigürasyonu test et
 nginx -t
@@ -352,7 +347,7 @@ systemctl restart nginx
 systemctl enable nginx
 ```
 
-Artık siteye `http://yomitranslate.com` adresinden erişebilirsin!
+Artık siteye `http://ruhtheme.com` adresinden erişebilirsin!
 
 ---
 
@@ -367,11 +362,11 @@ apt install -y certbot python3-certbot-nginx
 
 ### 10.2 — SSL sertifikası al
 ```bash
-certbot --nginx -d yomitranslate.com -d www.yomitranslate.com
+certbot --nginx -d ruhtheme.com -d www.ruhtheme.com
 ```
 
 Certbot sıraya şunları soracak:
-1. **E-posta adresi** → `yomitranslate@gmail.com` yaz (sertifika yenileme bildirimleri için)
+1. **E-posta adresi** → `ruh-theme@gmail.com` yaz (sertifika yenileme bildirimleri için)
 2. **Şartları kabul ediyor musun?** → `A` (Agree)
 3. **E-posta paylaşımı** → `N` (No)
 4. **HTTP'yi HTTPS'e yönlendir mi?** → `2` (Redirect) seç
@@ -384,7 +379,7 @@ certbot renew --dry-run
 ```
 `Congratulations, all simulated renewals succeeded` görmelisin.
 
-Artık siteye `https://yomitranslate.com` adresinden **güvenli** erişilebilir.
+Artık siteye `https://ruhtheme.com` adresinden **güvenli** erişilebilir.
 
 ---
 
@@ -396,14 +391,14 @@ Varsayılan admin hesabı:
 
 | Alan | Değer |
 |---|---|
-| **URL** | `https://yomitranslate.com/login` |
+| **URL** | `https://ruhtheme.com/login` |
 | **Email** | `admin@yomitranslate.com` |
 | **Şifre** | `admin123` |
 
 > 🚨 **GİRİŞ YAPTIKTAN HEMEN SONRA** şifreyi ve e-posta adresini değiştir!  
 > Profil sayfasına giderek hesap bilgilerini güncelle.
 
-Admin paneline şuradan eriş: `https://yomitranslate.com/admin-panel`
+Admin paneline şuradan eriş: `https://ruhtheme.com/admin-panel`
 
 ---
 
@@ -412,7 +407,7 @@ Admin paneline şuradan eriş: `https://yomitranslate.com/admin-panel`
 Yeni bir versiyon yayınladığında:
 
 ```bash
-cd /var/www/yomitranslate
+cd /var/www/ruh-theme
 
 # Git kullanıyorsan yeni kodu çek
 git pull origin main
@@ -424,7 +419,7 @@ npm ci --production=false
 npm run build
 
 # Uygulamayı yeniden başlat (sıfır downtime)
-pm2 reload yomitranslate
+pm2 reload ruh-theme
 ```
 
 
@@ -432,7 +427,7 @@ pm2 reload yomitranslate
 
 ### Manuel yedekleme
 ```bash
-cp /var/www/yomitranslate/data/manga.db /root/backups/manga_$(date +%Y%m%d_%H%M).db
+cp /var/www/ruh-theme/data/manga.db /root/backups/manga_$(date +%Y%m%d_%H%M).db
 ```
 
 ### Otomatik günlük yedekleme (her gece saat 03:00'te)
@@ -441,16 +436,16 @@ crontab -e
 ```
 Editör açılır, dosyanın sonuna şu satırı ekle:
 ```
-0 3 * * * cp /var/www/yomitranslate/data/manga.db /root/backups/manga_$(date +\%Y\%m\%d).db 2>/dev/null
+0 3 * * * cp /var/www/ruh-theme/data/manga.db /root/backups/manga_$(date +\%Y\%m\%d).db 2>/dev/null
 ```
 Kaydet ve çık.
 
 ### Yedeklenecek kritik dosyalar
 ```
-/var/www/yomitranslate/data/manga.db        ← Tüm veriler (kullanıcılar, seriler, vs.)
-/var/www/yomitranslate/public/uploads/      ← Manga görselleri
-/var/www/yomitranslate/public/translations/ ← Çevrilmiş sayfalar
-/var/www/yomitranslate/.env.local           ← Ortam değişkenleri
+/var/www/ruh-theme/data/manga.db        ← Tüm veriler (kullanıcılar, seriler, vs.)
+/var/www/ruh-theme/public/uploads/      ← Manga görselleri
+/var/www/ruh-theme/public/translations/ ← Çevrilmiş sayfalar
+/var/www/ruh-theme/.env.local           ← Ortam değişkenleri
 ```
 
 ---
@@ -458,7 +453,7 @@ Kaydet ve çık.
 ## 📁 Sunucudaki Klasör Yapısı
 
 ```
-/var/www/yomitranslate/
+/var/www/ruh-theme/
 ├── .env.local           ← Gizli ortam değişkenleri (kimseyle paylaşma!)
 ├── .next/               ← Derlenmiş Next.js dosyaları
 ├── data/
@@ -483,14 +478,14 @@ Kaydet ve çık.
 Nginx ve Node.js'in dosyalara erişebilmesi için:
 ```bash
 # Yükleme dizinleri oluştur
-mkdir -p /var/www/yomitranslate/public/uploads/{covers,pages,avatars}
-mkdir -p /var/www/yomitranslate/public/translations
+mkdir -p /var/www/ruh-theme/public/uploads/{covers,pages,avatars}
+mkdir -p /var/www/ruh-theme/public/translations
 
 # İzinler
-chown -R www-data:www-data /var/www/yomitranslate/public/uploads
-chown -R www-data:www-data /var/www/yomitranslate/public/translations
-chmod -R 755 /var/www/yomitranslate/public/uploads
-chmod -R 755 /var/www/yomitranslate/public/translations
+chown -R www-data:www-data /var/www/ruh-theme/public/uploads
+chown -R www-data:www-data /var/www/ruh-theme/public/translations
+chmod -R 755 /var/www/ruh-theme/public/uploads
+chmod -R 755 /var/www/ruh-theme/public/translations
 ```
 
 ---
@@ -514,20 +509,20 @@ npm run build
 ```bash
 lsof -i :3000          # Portu kullanan process'i bul
 kill -9 <PID>          # <PID> kısmına numarayı yaz
-pm2 restart yomitranslate
+pm2 restart ruh-theme
 ```
 
 ### Nginx 502 Bad Gateway hatası
 ```bash
 pm2 status                     # Uygulama çalışıyor mu?
-pm2 logs yomitranslate         # Hata mesajına bak
-pm2 restart yomitranslate      # Yeniden başlat
+pm2 logs ruh-theme         # Hata mesajına bak
+pm2 restart ruh-theme      # Yeniden başlat
 ```
 
 ### 413 Entity Too Large hatası
 Nginx konfigürasyonunda `client_max_body_size` değerini artır:
 ```bash
-nano /etc/nginx/sites-available/yomitranslate
+nano /etc/nginx/sites-available/ruh-theme
 # client_max_body_size değerini 200M yap
 nginx -t && systemctl restart nginx
 ```
@@ -545,20 +540,20 @@ Sonra tekrar `npm run build` dene.
 
 ### Çeviri dosyaları kaydedilemiyor (Permission hatası)
 ```bash
-chown -R www-data:www-data /var/www/yomitranslate/public/translations
-chown -R www-data:www-data /var/www/yomitranslate/public/uploads
-chmod -R 755 /var/www/yomitranslate/public/translations
-chmod -R 755 /var/www/yomitranslate/public/uploads
-pm2 restart yomitranslate
+chown -R www-data:www-data /var/www/ruh-theme/public/translations
+chown -R www-data:www-data /var/www/ruh-theme/public/uploads
+chmod -R 755 /var/www/ruh-theme/public/translations
+chmod -R 755 /var/www/ruh-theme/public/uploads
+pm2 restart ruh-theme
 ```
 
 ### Cloudflare Turnstile çalışmıyor
-Admin panelinde `Settings` sekmesinden `API Keys` bölümüne gir. Turnstile Site Key ve Secret Key'in doğru girildiğini kontrol et. Cloudflare Dashboard'dan `yomitranslate.com` domain'ini whitelist'e aldığından emin ol.
+Admin panelinde `Settings` sekmesinden `API Keys` bölümüne gir. Turnstile Site Key ve Secret Key'in doğru girildiğini kontrol et. Cloudflare Dashboard'dan `ruhtheme.com` domain'ini whitelist'e aldığından emin ol.
 
 ### SSL sertifikası alınamıyor
 DNS'in yayıldığından emin ol:
 ```bash
-nslookup yomitranslate.com
+nslookup ruhtheme.com
 # Sunucunun IP adresini dönmeli
 ```
 
@@ -576,5 +571,5 @@ nslookup yomitranslate.com
 
 ---
 
-> **Tebrikler!** 🎉 YomiTranslate artık `https://yomitranslate.com` adresinde yayında.  
-> Sorun yaşarsan `pm2 logs yomitranslate` komutuyla hata mesajlarına bak.
+> **Tebrikler!** 🎉 Ruh Theme artık `https://ruhtheme.com` adresinde yayında.  
+> Sorun yaşarsan `pm2 logs ruh-theme` komutuyla hata mesajlarına bak.
