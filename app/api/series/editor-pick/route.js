@@ -1,44 +1,33 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 
-// Editor pick changes once per day — cache for 1 hour
-export const revalidate = 3600;
+export const dynamic = 'force-dynamic';
 
 export async function GET(request) {
     try {
         const db = getDb();
         
-        // Get all published series IDs
-        const ids = db.prepare('SELECT id FROM series WHERE published = 1 ORDER BY id ASC').all();
-        
-        if (ids.length === 0) {
-             return NextResponse.json({ series: null });
-        }
-
-        // Use today's date string as a seed to pick one id (changes every day)
-        const today = new Date().toISOString().split('T')[0];
-        let hash = 0;
-        for (let i = 0; i < today.length; i++) {
-            hash = today.charCodeAt(i) + ((hash << 5) - hash);
-        }
-        
-        const index = Math.abs(hash) % ids.length;
-        const pickedId = ids[index].id;
-
-        const series = db.prepare(`
+        // Get up to 5 published series (ordered by rating and views)
+        const seriesList = db.prepare(`
             SELECT s.*, COUNT(ch.id) as chapterCount
             FROM series s
             LEFT JOIN chapters ch ON s.id = ch.series_id
-            WHERE s.id = ?
+            WHERE s.published = 1
             GROUP BY s.id
-        `).get(pickedId);
+            ORDER BY s.rating DESC, s.views DESC
+            LIMIT 5
+        `).all();
+        
+        if (seriesList.length === 0) {
+             return NextResponse.json({ series: [] });
+        }
 
-        const finalSeries = {
-            ...series,
-            genres: JSON.parse(series.genres || '[]'),
-        };
+        const finalSeriesList = seriesList.map(s => ({
+            ...s,
+            genres: JSON.parse(s.genres || '[]'),
+        }));
 
-        return NextResponse.json({ series: finalSeries });
+        return NextResponse.json({ series: finalSeriesList });
     } catch (error) {
         console.error('Error fetching editor pick:', error);
         return NextResponse.json({ error: 'Failed to fetch editor pick' }, { status: 500 });

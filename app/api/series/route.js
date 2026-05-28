@@ -8,70 +8,78 @@ export async function GET(request) {
 
         const { searchParams } = new URL(request.url);
         const search = searchParams.get('search') || '';
-        const genre = searchParams.get('genre') || '';
+        const genreParam = searchParams.get('genre') || '';
         const status = searchParams.get('status') || '';
         const type = searchParams.get('type') || '';
         const sort = searchParams.get('sort') || 'latest';
-        const limit = parseInt(searchParams.get('limit')) || 0;
+        const limit = Math.min(parseInt(searchParams.get('limit')) || 24, 100);
+        const page = Math.max(parseInt(searchParams.get('page')) || 1, 1);
+        const offset = (page - 1) * limit;
 
-        // Build base query with chapter count via JOIN (eliminates N+1)
-        let query = `
-            SELECT s.*, COUNT(ch.id) as chapterCount
-            FROM series s
-            LEFT JOIN chapters ch ON s.id = ch.series_id
-            WHERE s.published = 1
-        `;
+        // Multi-genre: comma-separated list for AND filtering
+        const genres = genreParam ? genreParam.split(',').map(g => g.trim()).filter(Boolean) : [];
+
+        let whereClause = 'WHERE s.published = 1';
         const params = [];
 
         if (search) {
-            query += ' AND (s.title LIKE ? OR s.author LIKE ? OR s.artist LIKE ?)';
+            whereClause += ' AND (s.title LIKE ? OR s.author LIKE ? OR s.artist LIKE ?)';
             params.push(`%${search}%`, `%${search}%`, `%${search}%`);
         }
 
-        if (genre) {
-            query += ' AND s.genres LIKE ?';
-            params.push(`%${genre}%`);
+        // Server-side AND filter for every selected genre
+        for (const g of genres) {
+            whereClause += ' AND s.genres LIKE ?';
+            params.push(`%${g}%`);
         }
 
         if (status) {
-            query += ' AND s.status = ?';
+            whereClause += ' AND s.status = ?';
             params.push(status);
         }
 
         if (type) {
-            query += ' AND s.type = ?';
+            whereClause += ' AND s.type = ?';
             params.push(type);
         }
 
-        query += ' GROUP BY s.id';
+        const baseQuery = `
+            SELECT s.*, COUNT(ch.id) as chapterCount
+            FROM series s
+            LEFT JOIN chapters ch ON s.id = ch.series_id
+            ${whereClause}
+            GROUP BY s.id
+        `;
 
+        let orderClause;
         switch (sort) {
-            case 'popular':
-                query += ' ORDER BY s.views DESC';
-                break;
-            case 'rating':
-                query += ' ORDER BY s.rating DESC';
-                break;
-            case 'title':
-                query += ' ORDER BY s.title ASC';
-                break;
-            default:
-                query += ' ORDER BY s.created_at DESC';
+            case 'popular': orderClause = 'ORDER BY s.views DESC'; break;
+            case 'rating':  orderClause = 'ORDER BY s.rating DESC'; break;
+            case 'title':   orderClause = 'ORDER BY s.title ASC';  break;
+            default:        orderClause = 'ORDER BY s.created_at DESC';
         }
 
-        if (limit > 0) {
-            query += ' LIMIT ?';
-            params.push(limit);
-        }
+        // Get total count for pagination
+        const countRow = db.prepare(
+            `SELECT COUNT(*) as cnt FROM (${baseQuery})`
+        ).get(...params);
+        const total = countRow?.cnt || 0;
 
-        const series = db.prepare(query).all(...params);
+        const series = db.prepare(
+            `${baseQuery} ${orderClause} LIMIT ? OFFSET ?`
+        ).all(...params, limit, offset);
 
         const withParsedGenres = series.map(s => ({
             ...s,
             genres: JSON.parse(s.genres || '[]'),
         }));
 
-        return NextResponse.json({ series: withParsedGenres });
+        return NextResponse.json({
+            series: withParsedGenres,
+            total,
+            page,
+            hasMore: offset + series.length < total,
+        });
     } catch (error) {
         console.error('GET /api/series error:', error);
         return NextResponse.json({ error: 'Failed to fetch series' }, { status: 500 });
@@ -80,7 +88,11 @@ export async function GET(request) {
 
 export async function POST(request) {
     try {
-        requireAdmin(request);
+        const { requireAuth, hasPermission } = require('@/lib/auth');
+        const user = requireAuth(request);
+        if (!hasPermission(user, 'manage_series') && user.role !== 'admin' && user.role !== 'manager') {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
         const { title, description, cover_url, author, artist, status, genres } = await request.json();
 
         if (!title) {

@@ -18,6 +18,7 @@ export default function RegisterPage() {
     const [siteKey, setSiteKey] = useState('');
 
     useEffect(() => {
+        if (process.env.NEXT_PUBLIC_DISABLE_TURNSTILE === '1') return;
         fetch('/api/settings')
             .then(r => r.json())
             .then(data => {
@@ -33,17 +34,17 @@ export default function RegisterPage() {
         setError('');
 
         if (password !== confirmPassword) {
-            setError('Passwords do not match');
+            setError('Şifreler eşleşmiyor');
             return;
         }
 
         if (password.length < 6) {
-            setError('Password must be at least 6 characters');
+            setError('Şifre en az 6 karakter olmalıdır');
             return;
         }
 
         if (siteKey && !turnstileToken) {
-            setError('Please complete the human verification.');
+            setError('Lütfen insan doğrulamasını tamamlayın.');
             return;
         }
 
@@ -66,18 +67,18 @@ export default function RegisterPage() {
     return (
         <div className="auth-page">
             <div className="auth-card fade-in">
-                <h1>Create Account</h1>
-                <p className="auth-subtitle">Join YomiTranslate — read manga in any language</p>
+                <h1>Hesap Oluştur</h1>
+                <p className="auth-subtitle">YomiTranslate'e katılın — dilediğiniz dilde manga okuyun</p>
 
                 {error && <div className="alert alert-error">{error}</div>}
 
                 <form onSubmit={handleSubmit}>
                     <div className="form-group">
-                        <label>Username</label>
+                        <label>Kullanıcı Adı</label>
                         <input
                             type="text"
                             className="form-input"
-                            placeholder="your_username"
+                            placeholder="kullanici_adiniz"
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
                             required
@@ -87,11 +88,11 @@ export default function RegisterPage() {
                     </div>
 
                     <div className="form-group">
-                        <label>Email</label>
+                        <label>E-posta</label>
                         <input
                             type="email"
                             className="form-input"
-                            placeholder="your@email.com"
+                            placeholder="eposta@adresiniz.com"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             required
@@ -100,11 +101,11 @@ export default function RegisterPage() {
                     </div>
 
                     <div className="form-group">
-                        <label>Password</label>
+                        <label>Şifre</label>
                         <input
                             type="password"
                             className="form-input"
-                            placeholder="Minimum 6 characters"
+                            placeholder="En az 6 karakter"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             required
@@ -112,13 +113,13 @@ export default function RegisterPage() {
                         />
                         {password.length > 0 && (
                             <div style={{ fontSize: '0.72rem', marginTop: 4, color: password.length >= 6 ? '#48bb78' : '#e53e3e' }}>
-                                {password.length < 6 ? `${6 - password.length} more characters needed` : '✓ Password length OK'}
+                                {password.length < 6 ? `En az ${6 - password.length} karakter daha gerekli` : '✓ Şifre uzunluğu uygun'}
                             </div>
                         )}
                     </div>
 
                     <div className="form-group">
-                        <label>Confirm Password</label>
+                        <label>Şifreyi Onayla</label>
                         <input
                             type="password"
                             className="form-input"
@@ -129,7 +130,7 @@ export default function RegisterPage() {
                             autoComplete="new-password"
                         />
                         {confirmPassword.length > 0 && password !== confirmPassword && (
-                            <div style={{ fontSize: '0.72rem', marginTop: 4, color: '#e53e3e' }}>Passwords do not match</div>
+                            <div style={{ fontSize: '0.72rem', marginTop: 4, color: '#e53e3e' }}>Şifreler eşleşmiyor</div>
                         )}
                     </div>
 
@@ -137,7 +138,7 @@ export default function RegisterPage() {
                         <TurnstileWidget
                             siteKey={siteKey}
                             onVerify={(token) => setTurnstileToken(token || '')}
-                            onError={() => setError('Turnstile verification error. Please refresh.')}
+                            onError={() => setError('Turnstile doğrulama hatası. Lütfen sayfayı yenileyin.')}
                         />
                     )}
 
@@ -147,19 +148,20 @@ export default function RegisterPage() {
                         style={{ width: '100%', marginTop: 8 }}
                         disabled={loading || (siteKey && !turnstileToken)}
                     >
-                        {loading ? 'Creating account...' : 'Create Account'}
+                        {loading ? 'Hesap oluşturuluyor...' : 'Hesap Oluştur'}
                     </button>
                 </form>
 
                 <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textAlign: 'center', marginTop: 12 }}>
-                    By creating an account, you agree to our{' '}
-                    <Link href="/terms" style={{ color: 'var(--accent-light)' }}>Terms & Conditions</Link>{' '}
-                    and{' '}
-                    <Link href="/privacy" style={{ color: 'var(--accent-light)' }}>Privacy Policy</Link>.
+                    Hesap oluşturarak,{' '}
+                    <Link href="/terms" style={{ color: 'var(--accent-light)' }}>Kullanım Koşulları</Link>{' '}
+                    ve{' '}
+                    <Link href="/privacy" style={{ color: 'var(--accent-light)' }}>Gizlilik Politikası</Link>{' '}
+                    sözleşmelerimizi kabul etmiş olursunuz.
                 </p>
 
                 <div className="auth-footer">
-                    Already have an account? <Link href="/login">Sign In</Link>
+                    Zaten bir hesabınız var mı? <Link href="/login">Giriş Yap</Link>
                 </div>
             </div>
         </div>

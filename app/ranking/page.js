@@ -69,9 +69,11 @@ export default function RankingPage() {
     const [toast, setToast] = useState(null);
     const [dailyClaimed, setDailyClaimed] = useState(false);
     const [rewardAnimation, setRewardAnimation] = useState(null);
+    const [appSettings, setAppSettings] = useState({});
 
     useEffect(() => {
         fetchRanking();
+        fetch('/api/settings').then(r => r.json()).then(d => setAppSettings(d.settings || {})).catch(() => {});
     }, []);
 
     async function fetchRanking() {
@@ -93,7 +95,7 @@ export default function RankingPage() {
 
     async function handleDailyLogin() {
         if (!user) {
-            showToast('You must be logged in to claim daily points!', 'error');
+            showToast(appSettings.lang_must_be_logged_in || 'Günlük ödülü almak için giriş yapmalısınız!', 'error');
             return;
         }
         setClaiming(true);
@@ -101,17 +103,18 @@ export default function RankingPage() {
             const res = await authFetch('/api/users/daily-login', { method: 'POST' });
             const data = await res.json();
             if (!res.ok) {
-                showToast(data.error || 'Failed to claim', 'error');
+                showToast(data.error || 'Talep edilemedi', 'error');
             } else {
                 setDailyClaimed(true);
-                setRewardAnimation(`+${data.reward} YP`);
+                const yp = appSettings.lang_yomi_points_short || 'YP';
+                setRewardAnimation(`+${data.reward} ${yp}`);
                 setTimeout(() => setRewardAnimation(null), 3000);
                 showToast(`${data.message}`, 'success');
                 await fetchRanking();
                 if (refreshUser) await refreshUser();
             }
         } catch (err) {
-            showToast('Error claiming points.', 'error');
+            showToast(appSettings.lang_error_claiming || 'Puan alınırken hata oluştu.', 'error');
         } finally {
             setClaiming(false);
         }
@@ -145,6 +148,7 @@ export default function RankingPage() {
     const top3 = users.slice(0, 3);
     const rest = users.slice(3);
     const myRank = user ? users.findIndex(u => u.id === user.id) + 1 : null;
+    const yp = appSettings.lang_yomi_points_short || 'YP';
 
     return (
         <div className="page-container page-section fade-in" style={{ maxWidth: 860, margin: '0 auto' }}>
@@ -165,7 +169,7 @@ export default function RankingPage() {
                         <GiftIcon />
                     </div>
                     <div style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--accent-light)', letterSpacing: 1 }}>{rewardAnimation}</div>
-                    <div style={{ color: 'var(--text-secondary)', marginTop: 4, fontSize: '0.82rem' }}>Daily Login Reward Claimed!</div>
+                    <div style={{ color: 'var(--text-secondary)', marginTop: 4, fontSize: '0.82rem' }}>{appSettings.lang_daily_login_reward_claimed || 'Günlük Giriş Ödülü Alındı!'}</div>
                 </div>
             )}
 
@@ -174,13 +178,13 @@ export default function RankingPage() {
                 <div>
                     <h1 className="ranking-title" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <TrophyIcon size={28} />
-                        Hall of Fame
+                        {appSettings.lang_ranking_title || 'Onur Listesi'}
                     </h1>
-                    <p className="ranking-subtitle">The most dedicated readers across the realms — ranked by Yomi Points.</p>
+                    <p className="ranking-subtitle">{appSettings.lang_ranking_subtitle || 'Diyarların en sadık okuyucuları — Yomi Puanına göre sıralandı.'}</p>
                     {myRank && myRank > 0 && (
                         <p style={{ color: 'var(--primary)', fontWeight: 700, marginTop: 8, fontSize: '0.88rem', display: 'flex', alignItems: 'center', gap: 6 }}>
                             <MapPinIcon />
-                            Your Rank: #{myRank} — {user.yomi_points || 0} YP
+                            {appSettings.lang_your_rank || 'Sıralamanız'}: #{myRank} — {user.yomi_points || 0} {yp}
                         </p>
                     )}
                 </div>
@@ -194,15 +198,15 @@ export default function RankingPage() {
                         {claiming ? (
                             <>
                                 <div className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />
-                                Claiming...
+                                {appSettings.lang_claiming || 'Talep Ediliyor...'}
                             </>
                         ) : dailyClaimed ? (
-                            <><CheckIcon /> Claimed Today</>
+                            <><CheckIcon /> {appSettings.lang_claimed_today || 'Bugün Alındı'}</>
                         ) : (
-                            <><GiftIcon /> Claim Daily Reward (+10 YP)</>
+                            <><GiftIcon /> {appSettings.lang_claim_daily_reward || 'Günlük Ödülü Al'} (+10 {yp})</>
                         )}
                     </button>
-                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Log in daily to earn free Yomi Points!</span>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{appSettings.lang_daily_login_hint || 'Ücretsiz Yomi Puanı kazanmak için her gün giriş yapın!'}</span>
                 </div>
             </div>
 
@@ -220,7 +224,7 @@ export default function RankingPage() {
                             </div>
                             <div className="podium-name">{top3[1].username}</div>
                             <div className="podium-points">
-                                <ZapIcon size={12} /> {top3[1].yomi_points} YP
+                                <ZapIcon size={12} /> {top3[1].yomi_points} {yp}
                             </div>
                         </div>
                     )}
@@ -238,7 +242,7 @@ export default function RankingPage() {
                         </div>
                         <div className="podium-name" style={{ fontSize: '1.1rem', marginTop: 8 }}>{top3[0].username}</div>
                         <div className="podium-points" style={{ color: '#f59e0b', fontWeight: 900 }}>
-                            <ZapIcon size={13} /> {top3[0].yomi_points} YP
+                            <ZapIcon size={13} /> {top3[0].yomi_points} {yp}
                         </div>
                     </div>
                     {/* Position 3 */}
@@ -252,7 +256,7 @@ export default function RankingPage() {
                             </div>
                             <div className="podium-name">{top3[2].username}</div>
                             <div className="podium-points">
-                                <ZapIcon size={12} /> {top3[2].yomi_points} YP
+                                <ZapIcon size={12} /> {top3[2].yomi_points} {yp}
                             </div>
                         </div>
                     )}
@@ -272,7 +276,7 @@ export default function RankingPage() {
                                 <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
                                     <span className="ranking-row-name">
                                         {rUser.username}
-                                        {isMe && <span style={{ color: 'var(--primary)', fontSize: '0.7rem', marginLeft: 6 }}>(You)</span>}
+                                        {isMe && <span style={{ color: 'var(--primary)', fontSize: '0.7rem', marginLeft: 6 }}>({appSettings.lang_you || 'Siz'})</span>}
                                     </span>
                                     <span style={{ fontSize: '0.7rem', color: cult.color, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
                                         <ZapIcon size={10} /> {cult.title}
@@ -281,7 +285,7 @@ export default function RankingPage() {
                             </div>
                             <div className="ranking-row-points" style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--accent-light)', fontVariantNumeric: 'tabular-nums' }}>
                                 <ZapIcon size={12} />
-                                {rUser.yomi_points} <span style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: '0.75rem' }}>YP</span>
+                                {rUser.yomi_points} <span style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: '0.75rem' }}>{yp}</span>
                             </div>
                         </div>
                     );
@@ -290,10 +294,10 @@ export default function RankingPage() {
 
             {users.length === 0 && (
                 <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-muted)' }}>
-                    <TrophyIcon size={48} />
-                    <p style={{ marginTop: 16 }}>No users found yet. Be the first to start earning Yomi Points!</p>
-                    <Link href="/" className="btn btn-primary btn-sm" style={{ marginTop: 16 }}>Start Reading</Link>
-                </div>
+                        <TrophyIcon size={48} />
+                        <p style={{ marginTop: 16 }}>{appSettings.lang_no_users_ranking || 'Henüz kullanıcı bulunamadı. Yomi Puanı kazanmaya başlayan ilk kişi olun!'}</p>
+                        <Link href="/" className="btn btn-primary btn-sm" style={{ marginTop: 16 }}>{appSettings.lang_start_reading || 'Okumaya Başla'}</Link>
+                    </div>
             )}
         </div>
     );

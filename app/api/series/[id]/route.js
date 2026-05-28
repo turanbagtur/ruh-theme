@@ -49,16 +49,8 @@ export async function GET(request, { params }) {
         }
 
         const chapters = db.prepare(
-            'SELECT * FROM chapters WHERE series_id = ? ORDER BY chapter_number ASC'
+            'SELECT id, series_id, chapter_number, title, created_at FROM chapters WHERE series_id = ? ORDER BY chapter_number ASC'
         ).all(numericId);
-
-        // Fetch all translations for all chapters in one query — eliminates N+1
-        const allTranslations = db.prepare(`
-            SELECT DISTINCT p.chapter_id, t.language_code
-            FROM translations t
-            JOIN pages p ON t.page_id = p.id
-            WHERE p.chapter_id IN (SELECT id FROM chapters WHERE series_id = ?)
-        `).all(numericId);
 
         // Fetch read counts per chapter from read_history
         const readCounts = db.prepare(`
@@ -68,28 +60,20 @@ export async function GET(request, { params }) {
             GROUP BY chapter_id
         `).all(numericId);
 
-        // Group language codes by chapter_id
-        const langsByChapter = {};
-        for (const row of allTranslations) {
-            if (!langsByChapter[row.chapter_id]) langsByChapter[row.chapter_id] = [];
-            langsByChapter[row.chapter_id].push(row.language_code);
-        }
-
         // Group read counts by chapter_id
         const readCountByChapter = {};
         for (const row of readCounts) {
             readCountByChapter[row.chapter_id] = row.read_count;
         }
 
-        const chaptersWithTranslations = chapters.map(ch => ({
+        const chaptersWithCounts = chapters.map(ch => ({
             ...ch,
-            availableLanguages: langsByChapter[ch.id] || [],
             read_count: readCountByChapter[ch.id] || 0,
         }));
 
         return NextResponse.json({
             series: { ...series, genres: JSON.parse(series.genres || '[]') },
-            chapters: chaptersWithTranslations,
+            chapters: chaptersWithCounts,
         });
     } catch (error) {
         console.error('GET /api/series/[id] error:', error);

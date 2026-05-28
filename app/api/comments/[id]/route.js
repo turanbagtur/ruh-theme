@@ -1,13 +1,23 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
-import { getUserFromRequest } from '@/lib/auth';
+import { getVerifiedUser } from '@/lib/auth';
+import { createRateLimiter } from '@/lib/ratelimit';
+
+const rateLimiter = createRateLimiter(20, 60 * 1000); // 20 req/min
 
 export async function PATCH(request, { params }) {
+    const rl = rateLimiter(request);
+    if (!rl.success) {
+        return NextResponse.json({ error: 'Too many requests.' }, {
+            status: 429, headers: { 'Retry-After': String(rl.retryAfter) },
+        });
+    }
+
     try {
-        const user = getUserFromRequest(request);
-        if (!user) {
-            return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
-        }
+        const db = getDb();
+        const result = getVerifiedUser(request, db);
+        if (result.error) return NextResponse.json({ error: result.error }, { status: result.status });
+        const { user } = result;
 
         const { id } = await params;
         const { content } = await request.json();
@@ -21,17 +31,20 @@ export async function PATCH(request, { params }) {
             return NextResponse.json({ error: 'Comment too long (max 2000 characters)' }, { status: 400 });
         }
 
-        const db = getDb();
-        const comment = db.prepare('SELECT * FROM comments WHERE id = ?').get(id);
+        const comment = db.prepare(
+            'SELECT id, user_id, is_deleted FROM comments WHERE id = ?'
+        ).get(id);
         if (!comment) {
             return NextResponse.json({ error: 'Comment not found' }, { status: 404 });
         }
-
+        if (comment.is_deleted) {
+            return NextResponse.json({ error: 'Comment has been deleted' }, { status: 410 });
+        }
         if (comment.user_id !== user.id && user.role !== 'admin') {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
-        db.prepare('UPDATE comments SET content = ? WHERE id = ?').run(trimmed, id);
+        db.prepare('UPDATE comments SET content = ?, edited_at = CURRENT_TIMESTAMP WHERE id = ?').run(trimmed, id);
 
         return NextResponse.json({ message: 'Comment updated', content: trimmed });
     } catch (error) {
@@ -41,26 +54,35 @@ export async function PATCH(request, { params }) {
 }
 
 export async function DELETE(request, { params }) {
+    const rl = rateLimiter(request);
+    if (!rl.success) {
+        return NextResponse.json({ error: 'Too many requests.' }, {
+            status: 429, headers: { 'Retry-After': String(rl.retryAfter) },
+        });
+    }
+
     try {
-        const user = getUserFromRequest(request);
-        if (!user) {
-            return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
-        }
+        const db = getDb();
+        const result = getVerifiedUser(request, db);
+        if (result.error) return NextResponse.json({ error: result.error }, { status: result.status });
+        const { user } = result;
 
         const { id } = await params;
-        const db = getDb();
-
-        const comment = db.prepare('SELECT * FROM comments WHERE id = ?').get(id);
+        const comment = db.prepare('SELECT id, user_id, is_deleted FROM comments WHERE id = ?').get(id);
         if (!comment) {
             return NextResponse.json({ error: 'Comment not found' }, { status: 404 });
         }
-
-        // Only owner or admin can delete
+        if (comment.is_deleted) {
+            return NextResponse.json({ message: 'Comment already deleted' });
+        }
         if (comment.user_id !== user.id && user.role !== 'admin') {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
-        db.prepare('DELETE FROM comments WHERE id = ?').run(id);
+        // Soft delete: preserve thread context, mark as removed
+        db.prepare(
+            "UPDATE comments SET is_deleted = 1, content = '[Yorum silindi]', edited_at = CURRENT_TIMESTAMP WHERE id = ?"
+        ).run(id);
 
         return NextResponse.json({ message: 'Comment deleted' });
     } catch (error) {

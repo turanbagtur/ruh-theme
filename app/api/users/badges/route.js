@@ -5,30 +5,30 @@ import { verifyToken } from '@/lib/auth';
 // Badge definitions
 export const BADGES = [
     // Reading count badges
-    { id: 'reader_1', name: 'First Step', description: 'Read 1 chapter', icon: 'book', color: '#6b7280', category: 'reading', threshold: 1 },
-    { id: 'reader_10', name: 'Manga Lover', description: 'Read 10 chapters', icon: 'book', color: '#22c55e', category: 'reading', threshold: 10 },
-    { id: 'reader_50', name: 'Chapter Hunter', description: 'Read 50 chapters', icon: 'book', color: '#3b82f6', category: 'reading', threshold: 50 },
-    { id: 'reader_100', name: 'Century Club', description: 'Read 100 chapters', icon: 'book', color: '#a855f7', category: 'reading', threshold: 100 },
-    { id: 'reader_500', name: 'Manga Master', description: 'Read 500 chapters', icon: 'crown', color: '#f59e0b', category: 'reading', threshold: 500 },
-    { id: 'reader_1000', name: 'Legendary Reader', description: 'Read 1000 chapters', icon: 'star', color: '#ef4444', category: 'reading', threshold: 1000 },
+    { id: 'reader_1', name: 'İlk Adım', description: 'İlk bölümünü oku', icon: 'book', color: '#6b7280', category: 'reading', threshold: 1 },
+    { id: 'reader_10', name: 'Manga Tutkunu', description: '10 bölüm oku', icon: 'book', color: '#22c55e', category: 'reading', threshold: 10 },
+    { id: 'reader_50', name: 'Bölüm Avcısı', description: '50 bölüm oku', icon: 'book', color: '#3b82f6', category: 'reading', threshold: 50 },
+    { id: 'reader_100', name: 'Yüzler Kulübü', description: '100 bölüm oku', icon: 'book', color: '#a855f7', category: 'reading', threshold: 100 },
+    { id: 'reader_500', name: 'Manga Ustası', description: '500 bölüm oku', icon: 'crown', color: '#f59e0b', category: 'reading', threshold: 500 },
+    { id: 'reader_1000', name: 'Efsanevi Okuyucu', description: '1000 bölüm oku', icon: 'star', color: '#ef4444', category: 'reading', threshold: 1000 },
 
     // Comment badges
-    { id: 'commenter_1', name: 'First Comment', description: 'Post your first comment', icon: 'chat', color: '#6b7280', category: 'social', threshold: 1 },
-    { id: 'commenter_10', name: 'Social Butterfly', description: 'Post 10 comments', icon: 'chat', color: '#22c55e', category: 'social', threshold: 10 },
-    { id: 'commenter_50', name: 'Discussion Expert', description: 'Post 50 comments', icon: 'chat', color: '#a855f7', category: 'social', threshold: 50 },
+    { id: 'commenter_1', name: 'İlk Yorum', description: 'İlk yorumunu yap', icon: 'chat', color: '#6b7280', category: 'social', threshold: 1 },
+    { id: 'commenter_10', name: 'Sosyal Kelebek', description: '10 yorum yap', icon: 'chat', color: '#22c55e', category: 'social', threshold: 10 },
+    { id: 'commenter_50', name: 'Tartışma Uzmanı', description: '50 yorum yap', icon: 'chat', color: '#a855f7', category: 'social', threshold: 50 },
 
     // Favorites badges
-    { id: 'favorite_5', name: 'Collector', description: 'Add 5 series to favorites', icon: 'heart', color: '#ec4899', category: 'collection', threshold: 5 },
-    { id: 'favorite_20', name: 'Librarian', description: 'Add 20 series to favorites', icon: 'heart', color: '#f43f5e', category: 'collection', threshold: 20 },
+    { id: 'favorite_5', name: 'Koleksiyoncu', description: '5 seriyi favorilere ekle', icon: 'heart', color: '#ec4899', category: 'collection', threshold: 5 },
+    { id: 'favorite_20', name: 'Kütüphaneci', description: '20 seriyi favorilere ekle', icon: 'heart', color: '#f43f5e', category: 'collection', threshold: 20 },
 
     // Streak / daily login badges
-    { id: 'daily_7', name: 'Weekly Hero', description: 'Log in 7 days in a row', icon: 'sun', color: '#f59e0b', category: 'streak', threshold: 7 },
-    { id: 'daily_30', name: 'Monthly Hero', description: 'Log in 30 days in a row', icon: 'sun', color: '#f97316', category: 'streak', threshold: 30 },
+    { id: 'daily_7', name: 'Haftalık Kahraman', description: '7 gün üst üste giriş yap', icon: 'sun', color: '#f59e0b', category: 'streak', threshold: 7 },
+    { id: 'daily_30', name: 'Aylık Kahraman', description: '30 gün üst üste giriş yap', icon: 'sun', color: '#f97316', category: 'streak', threshold: 30 },
 
     // Special badges
-    { id: 'early_adopter', name: 'Founding Member', description: 'One of the first 100 users', icon: 'star', color: '#eab308', category: 'special', threshold: null },
-    { id: 'completed_1', name: 'Series Finisher', description: 'Complete 1 series in your reading list', icon: 'check', color: '#10b981', category: 'collection', threshold: 1 },
-    { id: 'completed_5', name: 'Series Expert', description: 'Complete 5 series', icon: 'check', color: '#059669', category: 'collection', threshold: 5 },
+    { id: 'early_adopter', name: 'Kurucu Üye', description: 'İlk 100 kullanıcıdan biri', icon: 'star', color: '#eab308', category: 'special', threshold: null },
+    { id: 'completed_1', name: 'Seri Bitirici', description: 'Okuma listendeki 1 seriyi tamamla', icon: 'check', color: '#10b981', category: 'collection', threshold: 1 },
+    { id: 'completed_5', name: 'Seri Uzmanı', description: '5 seri tamamla', icon: 'check', color: '#059669', category: 'collection', threshold: 5 },
 ];
 
 function getUser(request) {

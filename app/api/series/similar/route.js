@@ -23,8 +23,8 @@ export async function GET(request) {
             // Find series that share at least one genre, same type preferred
             // Score by number of shared genres
             const allSeries = db.prepare(`
-                SELECT id, title, slug, cover_image, genres, type,
-                    (SELECT COUNT(*) FROM chapters c WHERE c.series_id = s.id AND c.published = 1) as chapter_count
+                SELECT id, title, slug, cover_url, genres, type,
+                    (SELECT COUNT(*) FROM chapters c WHERE c.series_id = s.id) as chapter_count
                 FROM series s
                 WHERE id != ? AND published = 1
             `).all(seriesId);
@@ -45,8 +45,8 @@ export async function GET(request) {
             const existingIds = new Set(similar.map(s => s.id));
             existingIds.add(parseInt(seriesId));
             const fill = db.prepare(`
-                SELECT id, title, slug, cover_image, genres, type,
-                    (SELECT COUNT(*) FROM chapters c WHERE c.series_id = s.id AND c.published = 1) as chapter_count
+                SELECT id, title, slug, cover_url, genres, type,
+                    (SELECT COUNT(*) FROM chapters c WHERE c.series_id = s.id) as chapter_count
                 FROM series s
                 WHERE id != ? AND published = 1 AND type = ?
                 ORDER BY id DESC

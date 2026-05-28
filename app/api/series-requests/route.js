@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
-import { getUserFromRequest } from '@/lib/auth';
+import { requireAuth } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,8 +48,8 @@ export async function GET(request) {
         const myRequests = searchParams.get('mine') === '1';
 
         if (adminView) {
-            const user = getUserFromRequest(request);
-            if (!user || user.role !== 'admin') {
+            const user = requireAuth(request);
+            if (!user || !['admin', 'manager'].includes(user.role)) {
                 return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
             }
             const rows = db.prepare(`
@@ -95,11 +95,22 @@ export async function POST(request) {
 
         const body = await request.json();
         const { action } = body;
-        const currentUser = getUserFromRequest(request);
+        
+        let currentUser;
+        try { currentUser = requireAuth(request); } catch { currentUser = null; }
+
+        if (currentUser && !['admin', 'manager'].includes(currentUser.role)) {
+            const dbUser = db.prepare('SELECT banned_until FROM users WHERE id = ?').get(currentUser.id);
+            if (dbUser && dbUser.banned_until && new Date(dbUser.banned_until) > new Date()) {
+                return NextResponse.json({
+                    error: `İşlem yapmanız engellendi. Engelin biteceği tarih: ${new Date(dbUser.banned_until).toLocaleString('tr-TR')}`
+                }, { status: 403 });
+            }
+        }
 
         // ── Admin: update status ────────────────────────────────
         if (action === 'update-status') {
-            if (!currentUser || currentUser.role !== 'admin') {
+            if (!currentUser || !['admin', 'manager'].includes(currentUser.role)) {
                 return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
             }
             const { id, status, admin_note } = body;
@@ -114,7 +125,7 @@ export async function POST(request) {
 
         // ── Admin: delete ───────────────────────────────────────
         if (action === 'delete') {
-            if (!currentUser || currentUser.role !== 'admin') {
+            if (!currentUser || !['admin', 'manager'].includes(currentUser.role)) {
                 return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
             }
             db.prepare('DELETE FROM series_requests WHERE id = ?').run(body.id);

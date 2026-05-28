@@ -1,4 +1,5 @@
 import { getDb } from '@/lib/db';
+import { permanentRedirect } from 'next/navigation';
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://yomitranslate.com';
 
@@ -18,7 +19,7 @@ export async function generateMetadata({ params }) {
 
         if (!chapter) {
             return {
-                title: 'YomiTranslate — Read Manga Online',
+                title: 'YomiTranslate — Türkçe Manga Oku',
                 robots: { index: false, follow: false },
             };
         }
@@ -26,8 +27,8 @@ export async function generateMetadata({ params }) {
         const slug = chapter.series_slug || chapter.series_id;
         const canonicalUrl = `${BASE_URL}/series/${slug}/chapter/${chapter.chapter_number}`;
         const chTitle = chapter.title ? ` — ${chapter.title}` : '';
-        const title = `${chapter.series_title} Chapter ${chapter.chapter_number}${chTitle} | YomiTranslate`;
-        const description = `Read ${chapter.series_title} Chapter ${chapter.chapter_number}${chTitle} online for free with AI translation on YomiTranslate.`;
+        const title = `${chapter.series_title} Bölüm ${chapter.chapter_number}${chTitle} | YomiTranslate`;
+        const description = `${chapter.series_title} Bölüm ${chapter.chapter_number}${chTitle} online oku. Yapay zeka destekli Türkçe çeviri ile mangayı ücretsiz ve kaliteli okuyun.`;
 
         return {
             title,
@@ -43,12 +44,33 @@ export async function generateMetadata({ params }) {
         };
     } catch {
         return {
-            title: 'YomiTranslate — Read Manga Online',
+            title: 'YomiTranslate — Türkçe Manga Oku',
             robots: { index: false, follow: false },
         };
     }
 }
 
-export default function ReadLayout({ children }) {
+export default async function ReadLayout({ children, params }) {
+    const { chapterId } = await params;
+    try {
+        const db = getDb();
+        const chapter = db.prepare(`
+            SELECT ch.chapter_number,
+                   s.id as series_id, s.slug as series_slug
+            FROM chapters ch
+            JOIN series s ON s.id = ch.series_id
+            WHERE ch.id = ? AND s.published = 1
+        `).get(chapterId);
+
+        if (chapter) {
+            const slug = chapter.series_slug || chapter.series_id;
+            permanentRedirect(`/series/${slug}/chapter/${chapter.chapter_number}`);
+        }
+    } catch (err) {
+        if (err.digest?.startsWith('NEXT_REDIRECT')) {
+            throw err;
+        }
+        console.error('ReadLayout redirect error:', err);
+    }
     return children;
 }

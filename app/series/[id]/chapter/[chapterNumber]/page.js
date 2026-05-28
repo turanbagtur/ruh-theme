@@ -1,12 +1,15 @@
 'use client';
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
+import { ReaderContent } from '@/app/read/[chapterId]/page';
 
 // SEO-friendly reader URL: /series/[seriesSlug]/chapter/[chapterNumber]
-// Resolves to the internal reader at /read/[chapterId]
+// Resolves and displays the internal reader inline
 export default function SEOReaderPage() {
     const { id: seriesSlug, chapterNumber } = useParams();
     const router = useRouter();
+    const [chapterId, setChapterId] = useState(null);
+    const [resolving, setResolving] = useState(true);
 
     useEffect(() => {
         async function resolveChapter() {
@@ -28,19 +31,27 @@ export default function SEOReaderPage() {
                     return;
                 }
 
-                // Redirect to internal reader, preserving any query string (e.g. ?lang=en)
-                const searchStr = typeof window !== 'undefined' ? window.location.search : '';
-                router.replace(`/read/${chapter.id}${searchStr}`);
+                setChapterId(chapter.id);
             } catch {
                 router.replace('/series');
+            } finally {
+                setResolving(false);
             }
         }
         resolveChapter();
     }, [seriesSlug, chapterNumber, router]);
 
+    if (resolving || !chapterId) {
+        return (
+            <div className="page-loading">
+                <div className="spinner" />
+            </div>
+        );
+    }
+
     return (
-        <div className="page-loading">
-            <div className="spinner" />
-        </div>
+        <Suspense fallback={<div className="page-loading"><div className="spinner" /></div>}>
+            <ReaderContent chapterId={chapterId} />
+        </Suspense>
     );
 }

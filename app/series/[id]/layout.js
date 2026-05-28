@@ -1,7 +1,17 @@
 import { getDb } from '@/lib/db';
-import { SUPPORTED_LANGUAGES } from '@/lib/torii';
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://yomitranslate.com';
+
+const GENRE_TR = {
+    'Action': 'Aksiyon', 'Adventure': 'Macera', 'Comedy': 'Komedi', 'Drama': 'Drama',
+    'Fantasy': 'Fantastik', 'Historical': 'Tarihi', 'Horror': 'Korku', 'Isekai': 'Isekai',
+    'Martial Arts': 'Dövüş Sanatları', 'Mystery': 'Gizem', 'Reincarnation': 'Reenkarnasyon',
+    'Romance': 'Romantik', 'School': 'Okul', 'Sci-Fi': 'Bilim Kurgu',
+    'Supernatural': 'Doğaüstü', 'Thriller': 'Gerilim', 'Ecchi': 'Ecchi', 'Harem': 'Harem',
+    'Josei': 'Josei', 'Mature': 'Yetişkin', 'Mecha': 'Mecha', 'Psychological': 'Psikolojik',
+    'Seinen': 'Seinen', 'Shoujo': 'Shoujo', 'Shounen': 'Shounen', 'Slice of Life': 'Günlük Yaşam',
+    'Sports': 'Spor', 'Tragedy': 'Trajedi', 'Webtoon': 'Webtoon', 'Manhwa': 'Manhwa', 'Manhua': 'Manhua'
+};
 
 // Server component: generates per-series metadata for SEO
 export async function generateMetadata({ params }) {
@@ -15,7 +25,7 @@ export async function generateMetadata({ params }) {
 
         if (!series) {
             return {
-                title: 'Series Not Found | YomiTranslate',
+                title: 'Seri Bulunamadı | YomiTranslate',
                 robots: { index: false },
             };
         }
@@ -29,67 +39,69 @@ export async function generateMetadata({ params }) {
         const genres = series.genres
             ? (() => { try { return JSON.parse(series.genres); } catch { return series.genres.split(',').map(g => g.trim()).filter(Boolean); } })()
             : [];
+        const genresTr = genres.map(g => GENRE_TR[g] || g);
 
         const description = series.description
             ? series.description.slice(0, 155).replace(/\s+$/, '') + (series.description.length > 155 ? '…' : '')
-            : `Read ${series.title} manga online for free with AI translation on YomiTranslate.`;
+            : `${series.title} mangasını YomiTranslate üzerinde ücretsiz ve Türkçe oku.`;
 
         const keywords = [
             series.title,
             `${series.title} manga`,
-            `${series.title} read online`,
-            `${series.title} chapters`,
-            `${series.title} AI translation`,
+            `${series.title} oku`,
+            `${series.title} türkçe`,
+            `${series.title} bölümleri`,
             ...genres,
-            'manga', 'read manga online', 'yomitranslate',
+            ...genresTr,
+            'manga', 'manga oku', 'türkçe manga', 'yomitranslate',
+            series.type ? `${series.type} oku` : '',
             series.type || '',
         ].filter(Boolean).join(', ');
 
-        // Madde 10: Hreflang alternates — each supported language via ?lang=XX
-        const languageAlternates = {};
-        for (const lang of SUPPORTED_LANGUAGES) {
-            languageAlternates[lang.code] = `${canonicalUrl}?lang=${lang.code}`;
+        const settingsRows = db.prepare('SELECT setting_key, setting_value FROM app_settings WHERE setting_key IN ("site_name", "seo_title_series")').all();
+        const settings = {};
+        settingsRows.forEach(r => { settings[r.setting_key] = r.setting_value; });
+        const siteName = settings.site_name || 'YomiTranslate';
+
+        let pageTitle = `${series.title} — Oku | ${siteName}`;
+        if (settings.seo_title_series) {
+            pageTitle = settings.seo_title_series.replace(/\{series_name\}/g, series.title).replace(/\{site_name\}/g, siteName);
         }
 
         return {
-            title: `${series.title} — Read Online | YomiTranslate`,
+            title: pageTitle,
             description,
             keywords,
             alternates: {
                 canonical: canonicalUrl,
-                languages: {
-                    'x-default': canonicalUrl,
-                    ...languageAlternates,
-                },
             },
             openGraph: {
                 type: 'book',
                 url: canonicalUrl,
-                siteName: 'YomiTranslate',
-                title: `${series.title} — Read Manga Online | YomiTranslate`,
+                siteName: siteName,
+                title: pageTitle,
                 description,
                 images: [{
                     url: coverUrl,
                     width: 460,
                     height: 650,
-                    alt: `${series.title} cover`,
+                    alt: `${series.title} kapak`,
                 }],
             },
             twitter: {
                 card: 'summary_large_image',
-                title: `${series.title} — Read Online`,
+                title: pageTitle,
                 description,
                 images: [coverUrl],
             },
         };
     } catch {
         return {
-            title: 'YomiTranslate — Read Manga Online',
+            title: 'YomiTranslate — Türkçe Manga Oku',
         };
     }
 }
 
-// Madde 2+3: JSON-LD doğrudan script tag ile + BreadcrumbList
 async function SeriesJsonLd({ id }) {
     try {
         const db = getDb();
@@ -112,7 +124,7 @@ async function SeriesJsonLd({ id }) {
 
         const description = series.description
             ? series.description.slice(0, 155).replace(/\s+$/, '') + (series.description.length > 155 ? '…' : '')
-            : `Read ${series.title} manga online for free with AI translation on YomiTranslate.`;
+            : `${series.title} mangasını YomiTranslate üzerinde ücretsiz ve Türkçe oku.`;
 
         const comicSeriesSchema = {
             '@context': 'https://schema.org',
@@ -138,7 +150,6 @@ async function SeriesJsonLd({ id }) {
             ...(series.status ? { creativeWorkStatus: series.status } : {}),
         };
 
-        // BreadcrumbList schema
         const breadcrumbSchema = {
             '@context': 'https://schema.org',
             '@type': 'BreadcrumbList',
@@ -146,13 +157,13 @@ async function SeriesJsonLd({ id }) {
                 {
                     '@type': 'ListItem',
                     position: 1,
-                    name: 'Home',
+                    name: 'Ana Sayfa',
                     item: BASE_URL,
                 },
                 {
                     '@type': 'ListItem',
                     position: 2,
-                    name: 'Browse',
+                    name: 'Göz At',
                     item: `${BASE_URL}/series`,
                 },
                 {

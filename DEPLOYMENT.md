@@ -427,7 +427,6 @@ npm run build
 pm2 reload yomitranslate
 ```
 
----
 
 ## 🛡️ Otomatik Yedekleme
 

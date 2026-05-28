@@ -1,0 +1,403 @@
+/* 1. Classic (Asura Style) */
+.asura-card {
+  display: flex;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 12px;
+  gap: 16px;
+  transition: all var(--transition);
+}
+.asura-card:hover {
+  border-color: var(--border-hover);
+  background: var(--bg-tertiary);
+}
+.asura-cover-wrapper {
+  width: 80px;
+  height: 115px;
+  border-radius: var(--radius);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.asura-cover-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform var(--transition);
+}
+.asura-card:hover .asura-cover-wrapper img {
+  transform: scale(1.05);
+}
+.asura-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+.asura-title {
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color var(--transition);
+}
+.asura-title:hover {
+  color: var(--accent);
+}
+.asura-chapters {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.asura-chapters .holo-chapter-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  transition: all var(--transition);
+  text-decoration: none;
+  transform: none !important;
+}
+.asura-chapters .holo-chapter-row:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+}
+
+/* 2. Cosmic Tear Card */
+.cosmic-card {
+  position: relative;
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: 1px; /* border thickness */
+  overflow: hidden;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.cosmic-card:hover {
+  transform: translateY(-4px);
+}
+.cosmic-tear-container {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: var(--radius-lg);
+  padding: 1px;
+  background: linear-gradient(135deg, transparent 40%, rgba(138, 43, 226, 0.3) 50%, transparent 60%);
+  background-size: 250% 250%;
+  animation: cosmic-tear-anim 4s infinite linear;
+}
+@keyframes cosmic-tear-anim {
+  0% { background-position: 100% 100%; }
+  100% { background-position: 0% 0%; }
+}
+.cosmic-card:hover .cosmic-tear-container {
+  background: linear-gradient(135deg, transparent 40%, rgba(167, 139, 250, 0.6) 50%, transparent 60%);
+}
+.cosmic-card-inner {
+  position: relative;
+  z-index: 1;
+  background: var(--bg-secondary);
+  border-radius: calc(var(--radius-lg) - 1px);
+  padding: 16px;
+  display: flex;
+  gap: 16px;
+  height: 100%;
+}
+.cosmic-cover-wrapper {
+  width: 90px;
+  height: 130px;
+  border-radius: var(--radius);
+  overflow: hidden;
+  flex-shrink: 0;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+}
+.cosmic-cover-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.4s ease;
+}
+.cosmic-card:hover .cosmic-cover-wrapper img {
+  transform: scale(1.1) rotate(-2deg);
+}
+.cosmic-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.cosmic-title {
+  font-weight: 800;
+  font-size: 1.1rem;
+  background: linear-gradient(90deg, #fff, #a78bfa);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cosmic-chapters {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cosmic-chapters .holo-chapter-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  border-left: 2px solid rgba(138, 43, 226, 0.3);
+  background: linear-gradient(90deg, rgba(138, 43, 226, 0.05) 0%, transparent 100%);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+  text-decoration: none;
+  transform: none !important;
+}
+.cosmic-chapters .holo-chapter-row:hover {
+  border-left-color: #a78bfa;
+  background: linear-gradient(90deg, rgba(138, 43, 226, 0.15) 0%, transparent 100%);
+  color: #fff;
+  padding-left: 14px;
+}
+
+/* 3. Skill Tree Card */
+.skill-tree-card {
+  background: #0f1115;
+  border: 1px solid #23262d;
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  transition: all 0.3s ease;
+}
+.skill-tree-card:hover {
+  border-color: #3f4450;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+.st-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+.st-cover-wrapper {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid #3f4450;
+  flex-shrink: 0;
+}
+.st-cover-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.st-title {
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: #e2e8f0;
+  transition: color 0.2s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.st-title:hover {
+  color: #38bdf8;
+}
+.st-tree-container {
+  position: relative;
+  padding-left: 24px;
+}
+.st-tree-line {
+  position: absolute;
+  top: 0;
+  bottom: 16px;
+  left: 24px;
+  width: 2px;
+  background: #2dd4bf;
+  box-shadow: 0 0 8px rgba(45, 212, 191, 0.5);
+}
+.st-chapters {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: relative;
+  z-index: 1;
+}
+.st-chapters .holo-chapter-row {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid #23262d;
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  color: #94a3b8;
+  margin-left: 16px;
+  text-decoration: none;
+  transition: all 0.2s;
+  transform: none !important;
+}
+.st-chapters .holo-chapter-row::before {
+  content: '';
+  position: absolute;
+  left: -22px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 12px;
+  height: 12px;
+  background: #0f1115;
+  border: 2px solid #2dd4bf;
+  border-radius: 50%;
+  box-shadow: 0 0 8px rgba(45, 212, 191, 0.5);
+  transition: all 0.2s;
+}
+.st-chapters .holo-chapter-row::after {
+  content: '';
+  position: absolute;
+  left: -16px;
+  top: 50%;
+  width: 16px;
+  height: 2px;
+  background: #2dd4bf;
+  z-index: -1;
+}
+.st-chapters .holo-chapter-row:hover {
+  background: rgba(45, 212, 191, 0.1);
+  border-color: #2dd4bf;
+  color: #e2e8f0;
+  transform: translateX(4px);
+}
+.st-chapters .holo-chapter-row:hover::before {
+  background: #2dd4bf;
+}
+
+/* 5. Cinematic Premiere Card */
+.cinematic-card {
+  position: relative;
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  background: #000;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-height: 180px;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.cinematic-card:hover {
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.6);
+}
+.cine-bg {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  opacity: 0.4;
+  filter: blur(4px) grayscale(30%);
+  transition: all 0.5s ease;
+}
+.cinematic-card:hover .cine-bg {
+  opacity: 0.6;
+  filter: blur(0px) grayscale(0%);
+  transform: scale(1.05);
+}
+.cine-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, #0a0a0d 10%, rgba(10,10,13,0.8) 50%, transparent 100%);
+}
+.cine-content {
+  position: relative;
+  z-index: 1;
+  padding: 16px;
+  display: flex;
+  gap: 16px;
+  align-items: flex-end;
+}
+.cine-cover-wrapper {
+  width: 70px;
+  height: 100px;
+  border-radius: var(--radius);
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 1px solid rgba(255,255,255,0.2);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  position: relative;
+}
+.cine-cover-wrapper::after {
+  content: '▶';
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(2px);
+}
+.cinematic-card:hover .cine-cover-wrapper::after {
+  opacity: 1;
+}
+.cine-cover-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.cine-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.cine-title {
+  font-weight: 800;
+  font-size: 1.15rem;
+  color: #fff;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+  margin-bottom: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.cine-chapters {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cine-chapters .holo-chapter-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(4px);
+  border-radius: 20px;
+  font-size: 0.8rem;
+  color: #ccc;
+  text-decoration: none;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 0.2s ease;
+  transform: none !important;
+}
+.cine-chapters .holo-chapter-row:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.3);
+}

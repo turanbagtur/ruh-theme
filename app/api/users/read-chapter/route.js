@@ -1,64 +1,73 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
-import { getUserFromRequest } from '@/lib/auth';
+import { getVerifiedUser } from '@/lib/auth';
 import { batchQueue } from '@/lib/queue';
+import { createRateLimiter } from '@/lib/ratelimit';
+
+const rateLimiter = createRateLimiter(60, 60 * 1000); // 60 req/min
 
 export async function POST(request) {
+    const rl = rateLimiter(request);
+    if (!rl.success) {
+        return NextResponse.json({ error: 'Too many requests.' }, {
+            status: 429,
+            headers: { 'Retry-After': String(rl.retryAfter) },
+        });
+    }
+
     try {
-        const userData = getUserFromRequest(request);
-        if (!userData) {
-            return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+        const db = getDb();
+        const result = getVerifiedUser(request, db);
+        if (result.error) {
+            return NextResponse.json({ error: result.error }, { status: result.status });
         }
+        const { user } = result;
 
         const body = await request.json();
-        const { chapterId } = body;
+        const { chapterId, pageNumber } = body || {};
 
         if (!chapterId) {
             return NextResponse.json({ error: 'Chapter ID required' }, { status: 400 });
         }
 
-        const db = getDb();
-        
-        // Ensure chapter exists
         const chapter = db.prepare('SELECT id FROM chapters WHERE id = ?').get(chapterId);
         if (!chapter) {
             return NextResponse.json({ error: 'Chapter not found' }, { status: 404 });
         }
 
         // Check if user already read this chapter
-        const existing = db.prepare('SELECT id FROM read_history WHERE user_id = ? AND chapter_id = ?').get(userData.id, chapterId);
-        
+        const existing = db.prepare(
+            'SELECT id FROM read_history WHERE user_id = ? AND chapter_id = ?'
+        ).get(user.id, chapterId);
+
         if (existing) {
-            // Still update reading_history for "Continue Reading" tracking
-            batchQueue.pushHistory(userData.id, chapterId);
-            return NextResponse.json({ 
-                success: true, 
+            // Update reading position even if already read
+            batchQueue.pushHistory(user.id, chapterId, pageNumber ?? 1);
+            return NextResponse.json({
+                success: true,
                 alreadyRead: true,
-                message: 'Chapter already read, no points awarded.'
+                message: 'Chapter already read, no points awarded.',
             });
         }
 
-        const reward = 2; // 2 points per chapter read
+        const reward = 2;
 
-        // Use transaction to ensure both operations succeed together
-        const tx = db.transaction(() => {
-            db.prepare('INSERT INTO read_history (user_id, chapter_id) VALUES (?, ?)').run(userData.id, chapterId);
-            db.prepare('UPDATE users SET yomi_points = coalesce(yomi_points, 0) + ? WHERE id = ?').run(reward, userData.id);
-        });
-        
-        tx();
+        const newPoints = db.transaction(() => {
+            db.prepare(
+                'INSERT INTO read_history (user_id, chapter_id) VALUES (?, ?)'
+            ).run(user.id, chapterId);
+            return db.prepare(
+                'UPDATE users SET yomi_points = COALESCE(yomi_points, 0) + ? WHERE id = ? RETURNING yomi_points'
+            ).get(reward, user.id)?.yomi_points;
+        })();
 
-        // Track reading progress async
-        batchQueue.pushHistory(userData.id, chapterId);
+        batchQueue.pushHistory(user.id, chapterId, pageNumber ?? 1);
 
-        // Get latest points to return to client
-        const user = db.prepare('SELECT yomi_points FROM users WHERE id = ?').get(userData.id);
-
-        return NextResponse.json({ 
-            success: true, 
+        return NextResponse.json({
+            success: true,
             reward,
-            newTotal: user.yomi_points,
-            message: `Earned ${reward} Yomi Points for reading!`
+            newTotal: newPoints,
+            message: `Earned ${reward} Yomi Points for reading!`,
         });
 
     } catch (error) {

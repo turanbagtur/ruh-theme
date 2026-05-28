@@ -24,7 +24,11 @@ export async function POST(request) {
     try {
         let user;
         try {
-            user = requireAdmin(request);
+            const { requireAuth, hasPermission } = require('@/lib/auth');
+            user = requireAuth(request);
+            if (!hasPermission(user, 'manage_settings') && user.role !== 'admin' && user.role !== 'manager') {
+                throw new Error('Forbidden');
+            }
         } catch {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }

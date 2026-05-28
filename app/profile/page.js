@@ -6,6 +6,25 @@ import Link from 'next/link';
 import SeriesCard from '@/components/SeriesCard';
 import { getCultivationData } from '@/lib/gamification';
 
+const GENRE_TR = {
+    'Action': 'Aksiyon', 'Adventure': 'Macera', 'Comedy': 'Komedi', 'Drama': 'Drama',
+    'Fantasy': 'Fantastik', 'Historical': 'Tarihi', 'Horror': 'Korku', 'Isekai': 'Isekai',
+    'Martial Arts': 'Dövüş Sanatları', 'Mystery': 'Gizem', 'Reincarnation': 'Reenkarnasyon',
+    'Romance': 'Romantik', 'School': 'Okul', 'Sci-Fi': 'Bilim Kurgu',
+    'Supernatural': 'Doğaüstü', 'Thriller': 'Gerilim', 'Ecchi': 'Ecchi', 'Harem': 'Harem',
+    'Josei': 'Josei', 'Mature': 'Yetişkin', 'Mecha': 'Mecha', 'Psychological': 'Psikolojik',
+    'Seinen': 'Seinen', 'Shoujo': 'Shoujo', 'Shounen': 'Shounen', 'Slice of Life': 'Günlük Yaşam',
+    'Sports': 'Spor', 'Tragedy': 'Trajedi', 'Webtoon': 'Webtoon', 'Manhwa': 'Manhwa', 'Manhua': 'Manhua'
+};
+
+function getGenreTranslation(genre) {
+    if (!genre) return '';
+    const keys = Object.keys(GENRE_TR);
+    const matchedKey = keys.find(k => k.toLowerCase() === genre.toLowerCase());
+    return matchedKey ? GENRE_TR[matchedKey] : genre;
+}
+
+
 // Quest icon mapper
 function QuestIcon({ icon, size = 18 }) {
     if (icon === 'sun') return (
@@ -173,7 +192,7 @@ export default function ProfilePage() {
                 await fetchQuests();
                 if (refreshUser) await refreshUser();
             } else {
-                show(data.error || 'Failed', 'error');
+                show(data.error || 'Başarısız oldu', 'error');
             }
         } catch (err) { show(err.message, 'error'); }
         finally { setClaimingQuest(null); }
@@ -203,8 +222,8 @@ export default function ProfilePage() {
 
     async function handlePasswordChange(e) {
         e.preventDefault();
-        if (newPassword !== confirmPassword) return show('Passwords do not match', 'error');
-        if (newPassword.length < 6) return show('Password must be at least 6 characters', 'error');
+        if (newPassword !== confirmPassword) return show('Şifreler eşleşmiyor', 'error');
+        if (newPassword.length < 6) return show('Şifre en az 6 karakter olmalıdır', 'error');
         setSaving(true);
         try {
             const res = await authFetch('/api/auth/profile', {
@@ -214,7 +233,7 @@ export default function ProfilePage() {
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error);
-            show('Password changed successfully');
+            show('Şifre başarıyla değiştirildi');
             setCurrentPassword(''); setNewPassword(''); setConfirmPassword('');
         } catch (err) { show(err.message, 'error'); }
         finally { setSaving(false); }
@@ -237,13 +256,13 @@ export default function ProfilePage() {
     if (loading || !user) return <div className="page-loading"><div className="spinner" /></div>;
 
     const tabs = [
-        { id: 'overview', label: 'Overview', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg> },
-        { id: 'favorites', label: 'Library', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg> },
-        { id: 'reading-list', label: 'Reading List', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg> },
-        { id: 'stats', label: 'Stats', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> },
-        { id: 'badges', label: 'Badges', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg> },
-        { id: 'settings', label: 'Settings', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.604.852.997 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg> },
-        { id: 'security', label: 'Security', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg> },
+        { id: 'overview', label: 'Genel Bakış', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg> },
+        { id: 'favorites', label: 'Kütüphane', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg> },
+        { id: 'reading-list', label: 'Okuma Listesi', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg> },
+        { id: 'stats', label: 'İstatistikler', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> },
+        { id: 'badges', label: 'Rozetler', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg> },
+        { id: 'settings', label: 'Ayarlar', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.604.852.997 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg> },
+        { id: 'security', label: 'Güvenlik', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg> },
     ];
 
     const cultivation = getCultivationData(user.yomi_points);
@@ -288,14 +307,14 @@ export default function ProfilePage() {
                         }}>
                             {cultivation.title}
                         </span>
-                        <span style={{ color: 'var(--text-muted)' }}>{getMemberDays()} Days Active</span>
+                        <span style={{ color: 'var(--text-muted)' }}>{getMemberDays()} Gün Aktif</span>
                     </div>
 
                     <div style={{ width: '100%', maxWidth: '500px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.85rem', fontWeight: 700 }}>
-                            <span style={{ color: 'var(--text-primary)' }}>{user.yomi_points || 0} Yomi Point</span>
+                            <span style={{ color: 'var(--text-primary)' }}>{user.yomi_points || 0} Yomi Puanı</span>
                             <span style={{ color: 'var(--text-muted)' }}>
-                                {cultivation.nextRank ? `Next Rank: ${cultivation.nextRank.title} (${cultivation.nextRank.minPoints} YP)` : 'Max Rank Reached'}
+                                {cultivation.nextRank ? `Sonraki Rütbe: ${cultivation.nextRank.title} (${cultivation.nextRank.minPoints} YP)` : 'Maksimum Rütbeye Ulaşıldı'}
                             </span>
                         </div>
                         <div style={{ width: '100%', height: '8px', background: 'var(--bg-tertiary)', borderRadius: '4px', overflow: 'hidden' }}>
@@ -329,12 +348,12 @@ export default function ProfilePage() {
                 <div className="profile-stat-card">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>
                     <span className="profile-stat-number">{favorites.length}</span>
-                    <span className="profile-stat-label">Favorites</span>
+                    <span className="profile-stat-label">Favoriler</span>
                 </div>
                 <div className="profile-stat-card">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
                     <span className="profile-stat-number">{user.yomi_points || 0}</span>
-                    <span className="profile-stat-label">Total Yomi Points</span>
+                    <span className="profile-stat-label">Toplam Yomi Puanı</span>
                 </div>
             </div>
 
@@ -355,10 +374,10 @@ export default function ProfilePage() {
                     <div className="admin-card" style={{ cursor: 'pointer' }} onClick={() => setTab('favorites')}>
                         <h3>
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>
-                            My Library ({favorites.length})
+                            Kütüphanem ({favorites.length})
                         </h3>
                         <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem' }}>
-                            {favorites.length > 0 ? `${favorites.length} series in your library` : 'Start reading and build your library!'}
+                            {favorites.length > 0 ? `Kütüphanenizde ${favorites.length} seri bulunuyor` : 'Manga okumaya başlayarak kendi kütüphanenizi oluşturun!'}
                         </p>
                         {favorites.length > 0 && (
                             <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
@@ -376,10 +395,10 @@ export default function ProfilePage() {
                     <div className="admin-card">
                         <h3>
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
-                            Daily Quests
+                            Günlük Görevler
                         </h3>
                         <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', marginTop: 4, marginBottom: 16 }}>
-                            Complete quests to earn Yomi Points!
+                            Yomi Puanı kazanmak için görevleri tamamlayın!
                         </p>
                         <div className="quest-board">
                             {quests.map(q => (
@@ -399,15 +418,15 @@ export default function ProfilePage() {
                                         <span className="quest-reward">+{q.reward} YP</span>
                                         {q.completed && !q.claimed ? (
                                             <button className="btn btn-primary btn-sm" onClick={() => claimQuest(q.id)} disabled={claimingQuest === q.id} style={{ fontSize: '0.72rem', padding: '4px 10px' }}>
-                                                {claimingQuest === q.id ? '...' : 'Claim'}
+                                                {claimingQuest === q.id ? '...' : 'Ödülü Al'}
                                             </button>
                                         ) : q.claimed ? (
-                                            <span style={{ fontSize: '0.7rem', color: '#22c55e', fontWeight: 700 }}>Claimed</span>
+                                            <span style={{ fontSize: '0.7rem', color: '#22c55e', fontWeight: 700 }}>Alındı</span>
                                         ) : null}
                                     </div>
                                 </div>
                             ))}
-                            {quests.length === 0 && <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '20px' }}>Loading quests...</p>}
+                            {quests.length === 0 && <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '20px' }}>Görevler yükleniyor...</p>}
                         </div>
                     </div>
                 </div>
@@ -421,9 +440,9 @@ export default function ProfilePage() {
                     ) : favorites.length === 0 ? (
                         <div className="admin-card" style={{ textAlign: 'center', padding: '40px 20px' }}>
                             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="1.5" style={{ marginBottom: 12 }}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>
-                            <p style={{ color: 'var(--text-muted)', marginBottom: 12 }}>Your library is empty</p>
-                            <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', marginBottom: 16 }}>Add series to your library by clicking the heart icon on any manga page.</p>
-                            <Link href="/series" className="btn btn-primary btn-sm">Browse Manga</Link>
+                            <p style={{ color: 'var(--text-muted)', marginBottom: 12 }}>Kütüphaneniz boş</p>
+                            <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', marginBottom: 16 }}>Herhangi bir manga sayfasındaki kalp simgesine tıklayarak kütüphanenize seriler ekleyebilirsiniz.</p>
+                            <Link href="/series" className="btn btn-primary btn-sm">Mangalara Göz At</Link>
                         </div>
                     ) : (
                         <div className="series-grid">
@@ -438,10 +457,10 @@ export default function ProfilePage() {
                 <div>
                     <div className="reading-list-tabs">
                         {[
-                            { value: 'reading', label: 'Reading', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg> },
-                            { value: 'completed', label: 'Completed', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg> },
-                            { value: 'plan', label: 'Plan to Read', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> },
-                            { value: 'dropped', label: 'Dropped', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg> },
+                            { value: 'reading', label: 'Okuyor', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg> },
+                            { value: 'completed', label: 'Tamamlandı', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg> },
+                            { value: 'plan', label: 'Okuyacak', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> },
+                            { value: 'dropped', label: 'Bıraktı', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg> },
                         ].map(opt => (
                             <button key={opt.value} className={`reading-list-tab ${readingListStatus === opt.value ? 'active' : ''}`}
                                 onClick={() => setReadingListStatus(opt.value)}
@@ -456,8 +475,8 @@ export default function ProfilePage() {
                         const filtered = readingList.filter(i => i.status === readingListStatus);
                         if (filtered.length === 0) return (
                             <div className="admin-card" style={{ textAlign: 'center', padding: '40px 20px' }}>
-                                <p style={{ color: 'var(--text-muted)' }}>No series in this category</p>
-                                <Link href="/series" className="btn btn-primary btn-sm" style={{ marginTop: 12 }}>Browse Manga</Link>
+                                <p style={{ color: 'var(--text-muted)' }}>Bu kategoride seri bulunmuyor</p>
+                                <Link href="/series" className="btn btn-primary btn-sm" style={{ marginTop: 12 }}>Mangalara Göz At</Link>
                             </div>
                         );
                         return (
@@ -470,17 +489,17 @@ export default function ProfilePage() {
                                                 <div style={{ padding: '10px 12px' }}>
                                                     <div style={{ fontWeight: 700, fontSize: '0.85rem', marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</div>
                                                     {item.last_read_chapter && (
-                                                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Last read: Ch. {item.last_read_chapter}</div>
+                                                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Son okunan: Bölüm {item.last_read_chapter}</div>
                                                     )}
                                                     {item.latest_chapter && (
-                                                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Latest: Ch. {item.latest_chapter}</div>
+                                                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Son bölüm: Bölüm {item.latest_chapter}</div>
                                                     )}
                                                 </div>
                                             </div>
                                         </Link>
                                         <button onClick={() => removeFromReadingList(item.series_id)}
                                             style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(0,0,0,0.7)', border: 'none', borderRadius: '50%', width: 24, height: 24, cursor: 'pointer', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}
-                                            title="Remove from list">✕</button>
+                                            title="Listeden kaldır">✕</button>
                                     </div>
                                 ))}
                             </div>
@@ -496,62 +515,79 @@ export default function ProfilePage() {
                         <div style={{ textAlign: 'center', padding: 40 }}><div className="spinner" /></div>
                     ) : !detailedStats ? (
                         <div className="admin-card" style={{ textAlign: 'center', padding: 40 }}>
-                            <p style={{ color: 'var(--text-muted)' }}>Could not load stats. Please try again.</p>
-                            <button className="btn btn-ghost btn-sm" style={{ marginTop: 12 }} onClick={fetchDetailedStats}>Retry</button>
+                            <p style={{ color: 'var(--text-muted)' }}>İstatistikler yüklenemedi. Lütfen tekrar deneyin.</p>
+                            <button className="btn btn-ghost btn-sm" style={{ marginTop: 12 }} onClick={fetchDetailedStats}>Tekrar Dene</button>
                         </div>
                     ) : (
                         <>
                             <div className="stats-grid">
                                 <div className="stat-card">
                                     <div className="stat-card-value">{detailedStats.totalChapters}</div>
-                                    <div className="stat-card-label">Chapters Read</div>
+                                    <div className="stat-card-label">Okunan Bölüm</div>
                                 </div>
                                 <div className="stat-card">
                                     <div className="stat-card-value">{detailedStats.thisWeek}</div>
-                                    <div className="stat-card-label">This Week</div>
+                                    <div className="stat-card-label">Bu Hafta</div>
                                 </div>
                                 <div className="stat-card">
                                     <div className="stat-card-value">{detailedStats.thisMonth}</div>
-                                    <div className="stat-card-label">This Month</div>
+                                    <div className="stat-card-label">Bu Ay</div>
                                 </div>
                                 <div className="stat-card">
                                     <div className="stat-card-value">{detailedStats.totalComments}</div>
-                                    <div className="stat-card-label">Comments</div>
+                                    <div className="stat-card-label">Yorumlar</div>
                                 </div>
                                 <div className="stat-card">
                                     <div className="stat-card-value">{detailedStats.listStats.completed}</div>
-                                    <div className="stat-card-label">Completed</div>
+                                    <div className="stat-card-label">Tamamlandı</div>
                                 </div>
                                 <div className="stat-card">
                                     <div className="stat-card-value">{detailedStats.listStats.reading}</div>
-                                    <div className="stat-card-label">Reading</div>
+                                    <div className="stat-card-label">Okuyor</div>
                                 </div>
+                                {detailedStats.topGenre && (
+                                    <div className="stat-card" style={{
+                                        gridColumn: '1 / -1',
+                                        background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.18), rgba(59, 130, 246, 0.12))',
+                                        border: '1px solid rgba(139, 92, 246, 0.25)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 16,
+                                        padding: '20px 24px',
+                                        borderRadius: 12,
+                                        boxShadow: '0 8px 32px 0 rgba(139, 92, 246, 0.05)',
+                                        backdropFilter: 'blur(4px)'
+                                    }}>
+                                        <span style={{ fontSize: '2.2rem', filter: 'drop-shadow(0 2px 8px rgba(139, 92, 246, 0.5))' }}>🎯</span>
+                                        <div style={{ textAlign: 'left' }}>
+                                            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600, marginBottom: 4 }}>En Çok Okunan Tür</div>
+                                            <div style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--accent-light)', textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
+                                                {getGenreTranslation(detailedStats.topGenre)}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
-                            {detailedStats.topGenre && (
-                                <div style={{ marginBottom: 24, color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                                    Favourite Genre: <strong style={{ color: 'var(--accent-light)' }}>{detailedStats.topGenre}</strong>
-                                </div>
-                            )}
                             {detailedStats.dailyActivity.length > 0 && (
                                 <div style={{ marginBottom: 24 }}>
-                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 6 }}>Last 30 Days Activity</div>
+                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 6 }}>Son 30 Günlük Aktivite</div>
                                     <div className="activity-chart">
                                         {detailedStats.dailyActivity.map(d => {
                                             const max = Math.max(...detailedStats.dailyActivity.map(x => x.count), 1);
-                                            return <div key={d.date} className="activity-bar" style={{ height: `${(d.count / max) * 100}%` }} title={`${d.date}: ${d.count} chapters`} />;
+                                            return <div key={d.date} className="activity-bar" style={{ height: `${(d.count / max) * 100}%` }} title={`${d.date}: ${d.count} bölüm`} />;
                                         })}
                                     </div>
                                 </div>
                             )}
                             {detailedStats.recentReads.length > 0 && (
                                 <div>
-                                    <h4 style={{ marginBottom: 12 }}>Recent Activity</h4>
+                                    <h4 style={{ marginBottom: 12 }}>Son Aktiviteler</h4>
                                     {detailedStats.recentReads.map(r => (
                                         <Link key={r.id} href={`/read/${r.id}`} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid var(--border)', textDecoration: 'none' }}>
                                             <img src={r.cover_image || '/demo/cover1.jpg'} alt={r.series_title} style={{ width: 36, height: 48, objectFit: 'cover', borderRadius: 4 }} />
                                             <div style={{ flex: 1, minWidth: 0 }}>
                                                 <div style={{ fontWeight: 600, fontSize: '0.88rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.series_title}</div>
-                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Chapter {r.chapter_number}</div>
+                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Bölüm {r.chapter_number}</div>
                                             </div>
                                             <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', flexShrink: 0 }}>{new Date(r.created_at).toLocaleDateString()}</div>
                                         </Link>
@@ -567,7 +603,7 @@ export default function ProfilePage() {
             {tab === 'badges' && (
                 <div>
                     <p style={{ color: 'var(--text-secondary)', marginBottom: 16, fontSize: '0.88rem' }}>
-                        Earn badges by reading chapters, making comments, and completing series.
+                        Bölümleri okuyarak, yorum yazarak ve serileri tamamlayarak rozetler kazanın.
                     </p>
                     {loadingBadges ? (
                         <div style={{ textAlign: 'center', padding: 40 }}><div className="spinner" /></div>
@@ -609,15 +645,15 @@ export default function ProfilePage() {
                 <div className="admin-card" style={{ maxWidth: 600 }}>
                     <h3>
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
-                        Edit Profile
+                        Profili Düzenle
                     </h3>
                     <form onSubmit={handleProfileUpdate} style={{ marginTop: 24 }}>
                         <div className="form-group">
-                            <label>Username</label>
+                            <label>Kullanıcı Adı</label>
                             <input className="form-input" value={username} onChange={e => setUsername(e.target.value)} required minLength={3} />
                         </div>
                         <div className="form-group">
-                            <label>Email</label>
+                            <label>E-posta</label>
                             <input type="email" className="form-input" value={email} onChange={e => setEmail(e.target.value)} required />
                         </div>
                         
@@ -630,16 +666,16 @@ export default function ProfilePage() {
                             marginTop: '24px' 
                         }}>
                             <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <span>Profile Picture</span>
+                                <span>Profil Resmi</span>
                                 {!avatarStatus.canUpdate && (
                                     <span style={{ color: '#ef4444', fontSize: '0.8rem', fontWeight: 600 }}>
                                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: 4 }}><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
-                                        Cooldown: {avatarStatus.remainingHours}h remaining
+                                        Bekleme Süresi: {avatarStatus.remainingHours} saat kaldı
                                     </span>
                                 )}
                             </label>
                             <small style={{ color: 'var(--text-muted)', display: 'block', marginBottom: '12px' }}>
-                                To prevent abuse, profile pictures can only be changed once every 24 hours. Max 2MB.
+                                Kötüye kullanımı önlemek için profil resimleri yalnızca 24 saatte bir değiştirilebilir. En fazla 2MB.
                             </small>
 
                             {/* Avatar Preview */}
@@ -659,7 +695,7 @@ export default function ProfilePage() {
                                 <div style={{ flex: 1 }}>
                                     <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: 4 }}>{user.username}</div>
                                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                                        {user.avatar_url && user.avatar_url !== '/default-avatar.png' ? 'Custom avatar set' : 'Using default avatar'}
+                                        {user.avatar_url && user.avatar_url !== '/default-avatar.png' ? 'Özel profil resmi ayarlandı' : 'Varsayılan profil resmi kullanılıyor'}
                                     </div>
                                 </div>
                             </div>
@@ -679,7 +715,7 @@ export default function ProfilePage() {
                                         onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-color)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
                                         >
                                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                                            Upload from device
+                                            Cihazdan Yükle
                                             <input 
                                                 type="file" 
                                                 accept="image/jpeg,image/png,image/webp,image/gif" 
@@ -688,7 +724,7 @@ export default function ProfilePage() {
                                                     const file = e.target.files?.[0];
                                                     if (!file) return;
                                                     if (file.size > 2 * 1024 * 1024) {
-                                                        show('File too large. Maximum 2MB.', 'error');
+                                                        show('Dosya çok büyük. En fazla 2MB.', 'error');
                                                         return;
                                                     }
                                                     setSaving(true);
@@ -702,7 +738,7 @@ export default function ProfilePage() {
                                                         const data = await res.json();
                                                         if (!res.ok) throw new Error(data.error);
                                                         updateUser(data.user);
-                                                        show('Avatar updated successfully!');
+                                                        show('Profil resmi başarıyla güncellendi!');
                                                         if (refreshUser) await refreshUser();
                                                     } catch (err) { show(err.message, 'error'); }
                                                     finally { setSaving(false); e.target.value = ''; }
@@ -714,13 +750,13 @@ export default function ProfilePage() {
                                     {/* URL Input */}
                                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                                         <div style={{ flex: 1, height: 1, background: 'var(--border-color)' }} />
-                                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1 }}>or</span>
+                                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1 }}>veya</span>
                                         <div style={{ flex: 1, height: 1, background: 'var(--border-color)' }} />
                                     </div>
                                     <input 
                                         type="url" 
                                         className="form-input" 
-                                        placeholder="Paste image URL (https://...)"
+                                        placeholder="Resim URL'sini yapıştırın (https://...)"
                                         value={avatarUrl} 
                                         onChange={e => setAvatarUrl(e.target.value)} 
                                     />
@@ -729,7 +765,7 @@ export default function ProfilePage() {
                         </div>
 
                         <button type="submit" className="btn btn-primary" disabled={saving}>
-                            {saving ? 'Saving...' : 'Save Changes'}
+                            {saving ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet'}
                         </button>
                     </form>
                 </div>
@@ -740,23 +776,23 @@ export default function ProfilePage() {
                 <div className="admin-card" style={{ maxWidth: 500 }}>
                     <h3>
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
-                        Change Password
+                        Şifreyi Değiştir
                     </h3>
                     <form onSubmit={handlePasswordChange} style={{ marginTop: 16 }}>
                         <div className="form-group">
-                            <label>Current Password</label>
+                            <label>Mevcut Şifre</label>
                             <input type="password" className="form-input" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} required />
                         </div>
                         <div className="form-group">
-                            <label>New Password</label>
+                            <label>Yeni Şifre</label>
                             <input type="password" className="form-input" value={newPassword} onChange={e => setNewPassword(e.target.value)} required minLength={6} />
                         </div>
                         <div className="form-group">
-                            <label>Confirm New Password</label>
+                            <label>Yeni Şifreyi Onayla</label>
                             <input type="password" className="form-input" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required minLength={6} />
                         </div>
                         <button type="submit" className="btn btn-danger" disabled={saving}>
-                            {saving ? 'Processing...' : 'Change Password'}
+                            {saving ? 'İşleniyor...' : 'Şifreyi Değiştir'}
                         </button>
                     </form>
                 </div>

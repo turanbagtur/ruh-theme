@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useAuth } from './AuthProvider';
 
-export default function Navbar() {
+export default function Navbar({ siteSettings = {} }) {
     const { user, logout, loading, authFetch } = useAuth();
     const [userMenuOpen, setUserMenuOpen] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -11,7 +11,9 @@ export default function Navbar() {
     const [searchQuery, setSearchQuery] = useState('');
     const [liveResults, setLiveResults] = useState([]);
     const [liveLoading, setLiveLoading] = useState(false);
+    const [hidden, setHidden] = useState(false);
     const debounceRef = useRef(null);
+    const lastScrollY = useRef(0);
 
     // Notification state
     const [notifOpen, setNotifOpen] = useState(false);
@@ -37,6 +39,22 @@ export default function Navbar() {
         const interval = setInterval(fetchNotifs, 60000);
         return () => clearInterval(interval);
     }, [user, authFetch]);
+
+    useEffect(() => {
+        function handleScroll() {
+            if (window.scrollY > lastScrollY.current && window.scrollY > 100) {
+                // Scrolling down past 100px
+                setHidden(true);
+            } else if (window.scrollY < lastScrollY.current || window.scrollY <= 100) {
+                // Scrolling up or at the top
+                setHidden(false);
+            }
+            lastScrollY.current = window.scrollY;
+        }
+
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
 
     // Close dropdowns on outside click
     useEffect(() => {
@@ -92,10 +110,10 @@ export default function Navbar() {
         if (!d) return '';
         const utcStr = typeof d === 'string' && !d.endsWith('Z') ? d + 'Z' : d;
         const m = Math.floor((Date.now() - new Date(utcStr).getTime()) / 60000);
-        if (m < 60) return `${Math.max(1, m)}m ago`;
+        if (m < 60) return `${Math.max(1, m)} dk önce`;
         const h = Math.floor(m / 60);
-        if (h < 24) return `${h}h ago`;
-        return `${Math.floor(h / 24)}d ago`;
+        if (h < 24) return `${h} sa önce`;
+        return `${Math.floor(h / 24)} gün önce`;
     }
 
     function parseGenres(g) {
@@ -108,19 +126,37 @@ export default function Navbar() {
 
     return (
         <>
-            <nav className="navbar">
+            <nav className={`navbar ${hidden ? 'hidden' : ''}`}>
                 <div className="navbar-inner">
                     <Link href="/" className="navbar-logo">
-                        <span className="logo-icon">読</span>
-                        <span className="logo-text">Yomi</span>
-                        <span className="logo-sub">TRANSLATE</span>
+                        {siteSettings.logo_url ? (
+                            <img
+                                src={siteSettings.logo_url}
+                                alt={siteSettings.site_name || 'Logo'}
+                                style={{ maxHeight: 36, maxWidth: 160, objectFit: 'contain' }}
+                            />
+                        ) : (
+                            <>
+                                <span className="logo-icon">読</span>
+                                <span className="logo-text">{siteSettings.site_name ? siteSettings.site_name.split(' ')[0] : 'Yomi'}</span>
+                                {siteSettings.site_name && siteSettings.site_name.includes(' ') ? (
+                                    <span className="logo-sub">{siteSettings.site_name.split(' ').slice(1).join(' ').toUpperCase()}</span>
+                                ) : !siteSettings.site_name ? (
+                                    <span className="logo-sub">TRANSLATE</span>
+                                ) : null}
+                            </>
+                        )}
                     </Link>
 
                     <div className="navbar-links">
-                        <Link href="/" className="nav-link">Home</Link>
-                        <Link href="/series" className="nav-link">Browse</Link>
-                        <Link href="/ranking" className="nav-link" style={{ color: 'var(--accent-light)', fontWeight: 700 }}>Ranking</Link>
-                        <Link href="/requests" className="nav-link">Requests</Link>
+                        {(siteSettings.navbar_menu || [
+                            { label: 'Ana Sayfa', url: '/' },
+                            { label: 'Göz At', url: '/series' },
+                            { label: 'Sıralama', url: '/ranking' },
+                            { label: 'İstekler', url: '/requests' },
+                        ]).map((item, i) => (
+                            <Link key={i} href={item.url || '#'} className="nav-link">{item.label}</Link>
+                        ))}
                     </div>
 
                     <div className="navbar-actions">
@@ -138,11 +174,11 @@ export default function Navbar() {
                                 {notifOpen && (
                                     <div className="notif-dropdown">
                                         <div className="notif-dropdown-header">
-                                            <span>Notifications</span>
-                                            {unreadCount > 0 && <button onClick={markAllRead} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 600 }}>Mark all read</button>}
+                                            <span>Bildirimler</span>
+                                            {unreadCount > 0 && <button onClick={markAllRead} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 600 }}>Tümünü okundu işaretle</button>}
                                         </div>
                                         {notifications.length === 0 ? (
-                                            <div className="notif-empty">No notifications yet</div>
+                                            <div className="notif-empty">Henüz bildiriminiz yok</div>
                                         ) : (
                                             notifications.slice(0, 15).map(n => (
                                                 <a key={n.id} href={n.link || '#'} className={`notif-item ${!n.is_read ? 'unread' : ''}`} onClick={() => setNotifOpen(false)}>
@@ -189,38 +225,38 @@ export default function Navbar() {
                                             {/* Mobile-only nav links */}
                                             <Link href="/" className="dropdown-item mobile-only-item">
                                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>
-                                                Home
+                                                Ana Sayfa
                                             </Link>
                                             <Link href="/series" className="dropdown-item mobile-only-item">
                                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /></svg>
-                                                Browse
+                                                Göz At
                                             </Link>
                                             <Link href="/ranking" className="dropdown-item mobile-only-item">
                                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>
-                                                Ranking
+                                                Sıralama
                                             </Link>
                                             <Link href="/requests" className="dropdown-item mobile-only-item">
                                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
-                                                Requests
+                                                İstekler
                                             </Link>
                                             <div style={{ height: 1, background: 'var(--border-color)', margin: '4px 0' }} />
                                             <Link href="/profile" className="dropdown-item">
                                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
-                                                Profile
+                                                Profil
                                             </Link>
                                             <Link href="/ranking" className="dropdown-item desktop-only-item">
                                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>
-                                                Leaderboard
+                                                Sıralama
                                             </Link>
-                                            {user.role === 'admin' && (
+                                            {['admin', 'manager', 'moderator', 'team_member'].includes(user.role) && (
                                                 <Link href="/admin-panel" className="dropdown-item">
                                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /><circle cx="12" cy="12" r="3" /></svg>
-                                                    Admin Panel
+                                                    Yönetim Paneli
                                                 </Link>
                                             )}
                                             <button onClick={logout} className="dropdown-item danger">
                                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></svg>
-                                                Logout
+                                                Çıkış Yap
                                             </button>
                                         </div>
                                     )}
@@ -229,8 +265,8 @@ export default function Navbar() {
                                 /* Not logged-in: show auth buttons on desktop + hamburger on mobile */
                                 <>
                                     <div className="auth-buttons">
-                                        <Link href="/login" className="btn btn-ghost">Login</Link>
-                                        <Link href="/register" className="btn btn-primary">Sign Up</Link>
+                                        <Link href="/login" className="btn btn-ghost">Giriş Yap</Link>
+                                        <Link href="/register" className="btn btn-primary">Kayıt Ol</Link>
                                     </div>
                                     <button
                                         className="nav-icon-btn mobile-menu-btn"
@@ -251,12 +287,12 @@ export default function Navbar() {
                 </div>
 
                 {searchOpen && (
-                    <div className="search-overlay" style={{ position: 'relative' }}>
+                    <div className="search-overlay">
                         <form onSubmit={handleSearch} className="search-bar-expanded">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
                             <input
                                 type="text"
-                                placeholder="Search manga series..."
+                                placeholder="Manga serisi ara..."
                                 value={searchQuery}
                                 onChange={handleSearchChange}
                                 autoFocus
@@ -270,18 +306,18 @@ export default function Navbar() {
                                         <img src={s.cover_url || '/demo/cover1.jpg'} alt="" />
                                         <div className="ls-info">
                                             <span className="ls-title">{s.title}</span>
-                                            <span className="ls-meta">{parseGenres(s.genres).slice(0, 2).join(', ')} · {s.chapterCount || 0} chapters</span>
+                                            <span className="ls-meta">{parseGenres(s.genres).slice(0, 2).join(', ')} · {s.chapterCount || 0} bölüm</span>
                                         </div>
                                     </Link>
                                 ))}
                                 <Link href={`/series?search=${encodeURIComponent(searchQuery)}`} className="live-search-item" style={{ justifyContent: 'center', fontWeight: 600, color: 'var(--primary)' }} onClick={() => { setSearchOpen(false); setLiveResults([]); }}>
-                                    View all results →
+                                    Tüm sonuçları görüntüle →
                                 </Link>
                             </div>
                         )}
                         {liveLoading && searchQuery.trim() && (
                             <div className="live-search-dropdown" style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                                Searching...
+                                Aranıyor...
                             </div>
                         )}
                     </div>
@@ -295,28 +331,28 @@ export default function Navbar() {
                     <div className="mobile-nav-panel">
                         <Link href="/" className="mobile-nav-item" onClick={closeMobileMenu}>
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>
-                            Home
+                            Ana Sayfa
                         </Link>
                         <Link href="/series" className="mobile-nav-item" onClick={closeMobileMenu}>
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /></svg>
-                            Browse
+                            Göz At
                         </Link>
                         <Link href="/ranking" className="mobile-nav-item" onClick={closeMobileMenu}>
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>
-                            Ranking
+                            Sıralama
                         </Link>
                         <Link href="/requests" className="mobile-nav-item" onClick={closeMobileMenu}>
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
-                            Requests
+                            İstekler
                         </Link>
                         <div className="mobile-nav-divider" />
                         <Link href="/login" className="mobile-nav-item" onClick={closeMobileMenu}>
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" /><polyline points="10 17 15 12 10 7" /><line x1="15" y1="12" x2="3" y2="12" /></svg>
-                            Login
+                            Giriş Yap
                         </Link>
                         <Link href="/register" className="mobile-nav-item mobile-nav-signup" onClick={closeMobileMenu}>
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><line x1="19" y1="8" x2="19" y2="14" /><line x1="22" y1="11" x2="16" y2="11" /></svg>
-                            Sign Up
+                            Kayıt Ol
                         </Link>
                     </div>
                 </>

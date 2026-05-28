@@ -25,30 +25,53 @@ export async function generateMetadata({ params }) {
             ? (series.cover_url.startsWith('http') ? series.cover_url : `${BASE_URL}${series.cover_url}`)
             : `${BASE_URL}/icon-512.png`;
 
-        const title = `${series.title} Chapter ${chNum}${chTitle} | YomiTranslate`;
-        const description = `Read ${series.title} Chapter ${chNum}${chTitle} online for free with AI translation on YomiTranslate.`;
+        const settingsRows = db.prepare('SELECT setting_key, setting_value FROM app_settings WHERE setting_key IN ("site_name", "seo_title_chapter")').all();
+        const settings = {};
+        settingsRows.forEach(r => { settings[r.setting_key] = r.setting_value; });
+        const siteName = settings.site_name || 'YomiTranslate';
+
+        let pageTitle = `${series.title} Bölüm ${chNum}${chTitle} | ${siteName}`;
+        if (settings.seo_title_chapter) {
+            pageTitle = settings.seo_title_chapter
+                .replace(/\{series_name\}/g, series.title)
+                .replace(/\{chapter_number\}/g, chNum)
+                .replace(/\{chapter_title\}/g, chapter?.title || '')
+                .replace(/\{site_name\}/g, siteName);
+        }
+        const description = `${series.title} Bölüm ${chNum}${chTitle} online oku. Yapay zeka destekli Türkçe çeviri ile ücretsiz ve reklamsız okuyun.`;
+        const keywords = [
+            `${series.title} ${chNum}`,
+            `${series.title} Bölüm ${chNum}`,
+            `${series.title} ${chNum} Oku`,
+            `${series.title} Bölüm ${chNum} Oku`,
+            `${series.title} Türkçe Oku`,
+            `Manga Oku`,
+            `Türkçe Manga Oku`,
+            `YomiTranslate`
+        ].filter(Boolean).join(', ');
 
         return {
-            title,
+            title: pageTitle,
             description,
+            keywords,
             alternates: { canonical: canonicalUrl },
             openGraph: {
                 type: 'article',
                 url: canonicalUrl,
-                siteName: 'YomiTranslate',
-                title,
+                siteName: siteName,
+                title: pageTitle,
                 description,
-                images: [{ url: coverUrl, alt: `${series.title} cover` }],
+                images: [{ url: coverUrl, alt: `${series.title} kapak` }],
             },
             twitter: {
                 card: 'summary_large_image',
-                title,
+                title: pageTitle,
                 description,
                 images: [coverUrl],
             },
         };
     } catch {
-        return { title: 'YomiTranslate — Read Manga Online' };
+        return { title: 'YomiTranslate — Türkçe Manga Oku' };
     }
 }
 
@@ -80,7 +103,7 @@ async function ChapterJsonLd({ id, chapterNumber }) {
             '@context': 'https://schema.org',
             '@type': 'ComicIssue',
             '@id': `${canonicalUrl}#chapter`,
-            name: `${series.title} Chapter ${chNum}${chTitle}`,
+            name: `${series.title} Bölüm ${chNum}${chTitle}`,
             issueNumber: String(chNum),
             url: canonicalUrl,
             image: {
@@ -108,13 +131,13 @@ async function ChapterJsonLd({ id, chapterNumber }) {
                 {
                     '@type': 'ListItem',
                     position: 1,
-                    name: 'Home',
+                    name: 'Ana Sayfa',
                     item: BASE_URL,
                 },
                 {
                     '@type': 'ListItem',
                     position: 2,
-                    name: 'Browse',
+                    name: 'Manga Keşfet',
                     item: `${BASE_URL}/series`,
                 },
                 {
@@ -126,7 +149,7 @@ async function ChapterJsonLd({ id, chapterNumber }) {
                 {
                     '@type': 'ListItem',
                     position: 4,
-                    name: `Chapter ${chNum}`,
+                    name: `Bölüm ${chNum}`,
                     item: canonicalUrl,
                 },
             ],

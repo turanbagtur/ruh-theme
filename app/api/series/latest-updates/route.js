@@ -30,7 +30,10 @@ export async function GET(request) {
         const seriesIds = recentSeries.map(s => s.id);
         const placeholders = seriesIds.map(() => '?').join(', ');
         const allChapters = db.prepare(`
-            SELECT id, series_id, chapter_number, title, created_at
+            SELECT id, series_id, chapter_number, title, created_at,
+                   CASE WHEN created_at >= datetime('now', '-1 day')
+             OR created_at >= datetime('now', 'localtime', '-1 day')
+        THEN 1 ELSE 0 END as is_new
             FROM (
                 SELECT id, series_id, chapter_number, title, created_at,
                        ROW_NUMBER() OVER (PARTITION BY series_id ORDER BY chapter_number DESC) as rn

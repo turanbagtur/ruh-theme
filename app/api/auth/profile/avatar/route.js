@@ -3,6 +3,7 @@ import { getDb } from '@/lib/db';
 import { getUserFromRequest } from '@/lib/auth';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
+import { optimizeAvatar } from '@/lib/imageOptimizer';
 
 export async function POST(request) {
     try {
@@ -46,17 +47,23 @@ export async function POST(request) {
         }
 
         // Prepare file path
-        const ext = file.type.split('/')[1] === 'jpeg' ? 'jpg' : file.type.split('/')[1];
-        const filename = `${user.id}_${Date.now()}.${ext}`;
+        const filename = `${user.id}_${Date.now()}.webp`;
         const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'avatars');
-        
+
         // Create directory if it doesn't exist
         await mkdir(uploadDir, { recursive: true });
 
-        // Write file
+        // Get raw buffer
         const bytes = await file.arrayBuffer();
         const buffer = Buffer.from(bytes);
-        await writeFile(path.join(uploadDir, filename), buffer);
+
+        // Optimize & save via Sharp (200x200 WebP); fallback to original on error
+        try {
+            await optimizeAvatar(buffer, path.join(uploadDir, filename));
+        } catch (sharpErr) {
+            console.error('Sharp avatar optimization failed, saving original:', sharpErr.message);
+            await writeFile(path.join(uploadDir, filename), buffer);
+        }
 
         // Update database
         const avatarUrl = `/uploads/avatars/${filename}`;

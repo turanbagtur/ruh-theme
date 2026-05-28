@@ -42,18 +42,10 @@ export default async function SeriesDetailPage({ params }) {
         redirect(`/series/${series.slug}`);
     }
 
-    // Fetch chapters (same approach as /api/series/[id])
+    // Fetch chapters
     const chaptersRaw = db.prepare(
         'SELECT * FROM chapters WHERE series_id = ? ORDER BY chapter_number ASC'
     ).all(series.id);
-
-    // Fetch all available languages per chapter via translations → pages join
-    const allTranslations = db.prepare(`
-        SELECT DISTINCT p.chapter_id, t.language_code
-        FROM translations t
-        JOIN pages p ON t.page_id = p.id
-        WHERE p.chapter_id IN (SELECT id FROM chapters WHERE series_id = ?)
-    `).all(series.id);
 
     // Fetch read counts per chapter
     const readCounts = db.prepare(`
@@ -63,11 +55,6 @@ export default async function SeriesDetailPage({ params }) {
         GROUP BY chapter_id
     `).all(series.id);
 
-    const langsByChapter = {};
-    for (const row of allTranslations) {
-        if (!langsByChapter[row.chapter_id]) langsByChapter[row.chapter_id] = [];
-        langsByChapter[row.chapter_id].push(row.language_code);
-    }
     const readCountByChapter = {};
     for (const row of readCounts) {
         readCountByChapter[row.chapter_id] = row.read_count;
@@ -75,7 +62,6 @@ export default async function SeriesDetailPage({ params }) {
 
     const chapters = chaptersRaw.map(ch => ({
         ...ch,
-        availableLanguages: langsByChapter[ch.id] || [],
         read_count: readCountByChapter[ch.id] || 0,
     }));
 

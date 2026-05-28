@@ -4,8 +4,6 @@ import { getDb } from '@/lib/db';
 export async function GET(request, { params }) {
     try {
         const { id } = await params;
-        const { searchParams } = new URL(request.url);
-        const lang = searchParams.get('lang') || '';
 
         const db = getDb();
 
@@ -23,37 +21,8 @@ export async function GET(request, { params }) {
             'SELECT * FROM pages WHERE chapter_id = ? ORDER BY page_number ASC'
         ).all(id);
 
-        let pagesWithTranslations = pages;
-        if (lang && pages.length > 0) {
-            // Fetch all translations for this chapter+lang in a single query — eliminates N+1
-            const pageIds = pages.map(p => p.id);
-            const placeholders = pageIds.map(() => '?').join(', ');
-            const translations = db.prepare(
-                `SELECT page_id, translated_image_path FROM translations WHERE page_id IN (${placeholders}) AND language_code = ?`
-            ).all(...pageIds, lang);
-
-            const translationMap = {};
-            for (const t of translations) {
-                translationMap[t.page_id] = t.translated_image_path;
-            }
-
-            pagesWithTranslations = pages.map(page => ({
-                ...page,
-                display_image: translationMap[page.id] || page.image_path,
-                is_translated: !!translationMap[page.id],
-            }));
-        } else {
-            pagesWithTranslations = pages.map(p => ({ ...p, display_image: p.image_path, is_translated: false }));
-        }
-
-        // Fetch translated languages for this chapter to show in language selector
-        const availableLanguagesRows = db.prepare(`
-            SELECT DISTINCT t.language_code
-            FROM translations t
-            JOIN pages p ON t.page_id = p.id
-            WHERE p.chapter_id = ?
-        `).all(id);
-        const availableLanguages = availableLanguagesRows.map(row => row.language_code);
+        // Map pages with display_image field
+        const pagesWithDisplay = pages.map(p => ({ ...p, display_image: p.image_path }));
 
         // Get prev/next chapters
         const prevChapter = db.prepare(
@@ -67,10 +36,9 @@ export async function GET(request, { params }) {
         return NextResponse.json({
             chapter,
             series: { ...series, genres: JSON.parse(series.genres || '[]') },
-            pages: pagesWithTranslations,
+            pages: pagesWithDisplay,
             prevChapter: prevChapter || null,
             nextChapter: nextChapter || null,
-            availableLanguages,
         });
     } catch (error) {
         console.error('GET /api/chapters/[id] error:', error);

@@ -1,5 +1,5 @@
 'use client';
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 
 const AuthContext = createContext(null);
 
@@ -7,109 +7,145 @@ export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
     const [token, setToken] = useState(null);
     const [loading, setLoading] = useState(true);
+    // Keep a ref so authFetch always has the latest token without stale closures
+    const tokenRef = useRef(null);
 
-    // Load saved session on mount
-    useEffect(() => {
-        const savedToken = localStorage.getItem('yomi_token');
-        const savedUser = localStorage.getItem('yomi_user');
-        if (savedToken && savedUser) {
-            setToken(savedToken);
-            setUser(JSON.parse(savedUser));
+    const clearSession = useCallback(async (callApi = true) => {
+        setUser(null);
+        setToken(null);
+        tokenRef.current = null;
+        if (callApi) {
+            await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => {});
         }
-        setLoading(false);
     }, []);
 
-    // Refresh user data from server when token is available (sync points, avatar etc.)
+    // On mount: validate session via server (uses httpOnly cookie automatically)
     useEffect(() => {
-        if (!token) return;
-        async function refreshUser() {
+        async function restoreSession() {
             try {
-                const res = await fetch('/api/auth/me', {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
+                const res = await fetch('/api/auth/me', { credentials: 'include' });
                 if (res.ok) {
                     const data = await res.json();
-                    if (data.user) {
+                    if (data.user && data.token) {
+                        tokenRef.current = data.token;
+                        setToken(data.token);
                         setUser(data.user);
-                        localStorage.setItem('yomi_user', JSON.stringify(data.user));
                     }
                 }
-            } catch {}
+            } catch {
+                // Network error — leave session empty
+            } finally {
+                setLoading(false);
+            }
         }
-        refreshUser();
-    }, [token]);
+        restoreSession();
+    }, []);
+
+    // Periodic re-validation every 30 min to catch bans / role changes
+    useEffect(() => {
+        if (!token) return;
+        let cancelled = false;
+
+        async function validateWithServer() {
+            try {
+                const res = await fetch('/api/auth/me', {
+                    credentials: 'include',
+                    headers: { Authorization: `Bearer ${tokenRef.current}` },
+                });
+                if (cancelled) return;
+                if (res.status === 401 || res.status === 403) {
+                    clearSession(true);
+                    return;
+                }
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.user && !cancelled) setUser(data.user);
+                }
+            } catch {
+                // Network error — keep session, will retry
+            }
+        }
+
+        const interval = setInterval(validateWithServer, 30 * 60 * 1000);
+        return () => {
+            cancelled = true;
+            clearInterval(interval);
+        };
+    }, [token, clearSession]);
 
     const login = useCallback(async (email, password, turnstileToken = '') => {
         const res = await fetch('/api/auth/login', {
             method: 'POST',
+            credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, password, turnstileToken }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
-        setUser(data.user);
+        tokenRef.current = data.token;
         setToken(data.token);
-        localStorage.setItem('yomi_token', data.token);
-        localStorage.setItem('yomi_user', JSON.stringify(data.user));
+        setUser(data.user);
         return data;
     }, []);
 
     const register = useCallback(async (username, email, password, turnstileToken = '') => {
         const res = await fetch('/api/auth/register', {
             method: 'POST',
+            credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, email, password, turnstileToken }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
-        setUser(data.user);
+        tokenRef.current = data.token;
         setToken(data.token);
-        localStorage.setItem('yomi_token', data.token);
-        localStorage.setItem('yomi_user', JSON.stringify(data.user));
+        setUser(data.user);
         return data;
     }, []);
 
     const logout = useCallback(async () => {
-        setUser(null);
-        setToken(null);
-        localStorage.removeItem('yomi_token');
-        localStorage.removeItem('yomi_user');
-        // Clear httpOnly cookie used for server-side maintenance mode check
-        await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
-    }, []);
+        await clearSession(true);
+    }, [clearSession]);
 
+    // authFetch: attaches Bearer token and handles 401 by logging out
     const authFetch = useCallback(async (url, options = {}) => {
-        return fetch(url, {
+        const currentToken = tokenRef.current;
+        const res = await fetch(url, {
             ...options,
+            credentials: 'include',
             headers: {
                 ...options.headers,
-                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                ...(currentToken ? { Authorization: `Bearer ${currentToken}` } : {}),
             },
         });
-    }, [token]);
+        if (res.status === 401) {
+            await clearSession(true);
+        }
+        return res;
+    }, [clearSession]);
 
-    // Update user in state AND localStorage (fixed key: was 'ruh_user' instead of 'yomi_user')
     const updateUser = useCallback((newUser) => {
         setUser(newUser);
-        localStorage.setItem('yomi_user', JSON.stringify(newUser));
     }, []);
 
-    // Refresh user data from server (call this after earning points etc.)
     const refreshUser = useCallback(async () => {
-        if (!token) return;
+        const currentToken = tokenRef.current;
+        if (!currentToken) return;
         try {
             const res = await fetch('/api/auth/me', {
-                headers: { Authorization: `Bearer ${token}` }
+                credentials: 'include',
+                headers: { Authorization: `Bearer ${currentToken}` },
             });
+            if (res.status === 401) {
+                await clearSession(true);
+                return;
+            }
             if (res.ok) {
                 const data = await res.json();
-                if (data.user) {
-                    setUser(data.user);
-                    localStorage.setItem('yomi_user', JSON.stringify(data.user));
-                }
+                if (data.user) setUser(data.user);
             }
         } catch {}
-    }, [token]);
+    }, [clearSession]);
 
     return (
         <AuthContext.Provider value={{ user, token, loading, login, register, logout, authFetch, updateUser, refreshUser }}>

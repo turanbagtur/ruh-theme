@@ -3,24 +3,24 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/components/AuthProvider';
 
-const STATUS_CONFIG = {
-    pending:   { label: 'Pending',   color: '#f59e0b', icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> },
-    reviewing: { label: 'Reviewing', color: '#6366f1', icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> },
-    approved:  { label: 'Approved',  color: '#22c55e', icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg> },
-    rejected:  { label: 'Rejected',  color: '#ef4444', icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg> },
-    added:     { label: 'Added',     color: '#14b8a6', icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg> },
+const STATUS_COLORS = {
+    pending:   '#f59e0b',
+    reviewing: '#6366f1',
+    approved:  '#22c55e',
+    rejected:  '#ef4444',
+    added:     '#14b8a6',
 };
-
-const FILTER_TABS = [
-    { key: 'all', label: 'All' },
-    { key: 'pending', label: 'Pending' },
-    { key: 'reviewing', label: 'Reviewing' },
-    { key: 'approved', label: 'Approved' },
-    { key: 'added', label: 'Added' },
-];
+const STATUS_ICONS = {
+    pending:   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+    reviewing: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>,
+    approved:  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>,
+    rejected:  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>,
+    added:     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>,
+};
 
 export default function RequestsPage() {
     const { user, authFetch } = useAuth();
+    const [appSettings, setAppSettings] = useState({});
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
@@ -36,7 +36,10 @@ export default function RequestsPage() {
     const [link, setLink] = useState('');
     const [reason, setReason] = useState('');
 
-    useEffect(() => { fetchRequests(); }, []);
+    useEffect(() => {
+        fetchRequests();
+        fetch('/api/settings').then(r => r.json()).then(d => setAppSettings(d.settings || {})).catch(() => {});
+    }, []);
 
     async function fetchRequests() {
         try {
@@ -45,7 +48,7 @@ export default function RequestsPage() {
             const data = await res.json();
             setRequests(data.requests || []);
         } catch {
-            setError('Failed to load requests.');
+            setError(appSettings.lang_failed_load_requests || 'Failed to load requests.');
         } finally {
             setLoading(false);
         }
@@ -53,7 +56,7 @@ export default function RequestsPage() {
 
     async function handleSubmit(e) {
         e.preventDefault();
-        if (!title.trim()) { setError('Series title is required.'); return; }
+        if (!title.trim()) { setError(appSettings.lang_series_title_required || 'Series title is required.'); return; }
         setSubmitting(true);
         setError('');
         try {
@@ -63,20 +66,20 @@ export default function RequestsPage() {
                 body: JSON.stringify({ series_title: title.trim(), source_url: link.trim(), reason: reason.trim() }),
             });
             const data = await res.json();
-            if (!res.ok) { setError(data.error || 'Failed to submit.'); return; }
-            setSuccess('Your request has been submitted! Our team will review it soon.');
+            if (!res.ok) { setError(data.error || (appSettings.lang_failed_submit || 'Failed to submit.')); return; }
+            setSuccess(appSettings.lang_request_submitted || 'Your request has been submitted! Our team will review it soon.');
             setShowForm(false);
             setTitle(''); setLink(''); setReason('');
             fetchRequests();
         } catch {
-            setError('Failed to submit request.');
+            setError(appSettings.lang_failed_submit_request || 'Failed to submit request.');
         } finally {
             setSubmitting(false);
         }
     }
 
     async function handleUpvote(id) {
-        if (!user) { setError('Please login to upvote.'); setTimeout(() => setError(''), 3000); return; }
+        if (!user) { setError(appSettings.lang_login_to_upvote || 'Please login to upvote.'); setTimeout(() => setError(''), 3000); return; }
         try {
             const res = await authFetch('/api/series-requests', {
                 method: 'POST',
@@ -100,6 +103,22 @@ export default function RequestsPage() {
     const filtered = requests.filter(r => filter === 'all' || r.status === filter);
     const counts = requests.reduce((a, r) => { a[r.status] = (a[r.status] || 0) + 1; return a; }, {});
 
+    const STATUS_CONFIG = {
+        pending:   { label: appSettings.lang_status_pending   || 'Pending',   color: STATUS_COLORS.pending,   icon: STATUS_ICONS.pending   },
+        reviewing: { label: appSettings.lang_status_reviewing || 'Reviewing', color: STATUS_COLORS.reviewing, icon: STATUS_ICONS.reviewing },
+        approved:  { label: appSettings.lang_status_approved  || 'Approved',  color: STATUS_COLORS.approved,  icon: STATUS_ICONS.approved  },
+        rejected:  { label: appSettings.lang_status_rejected  || 'Rejected',  color: STATUS_COLORS.rejected,  icon: STATUS_ICONS.rejected  },
+        added:     { label: appSettings.lang_status_added     || 'Added',     color: STATUS_COLORS.added,     icon: STATUS_ICONS.added     },
+    };
+
+    const FILTER_TABS = [
+        { key: 'all',       label: appSettings.lang_filter_all       || 'All' },
+        { key: 'pending',   label: appSettings.lang_status_pending   || 'Pending' },
+        { key: 'reviewing', label: appSettings.lang_status_reviewing || 'Reviewing' },
+        { key: 'approved',  label: appSettings.lang_status_approved  || 'Approved' },
+        { key: 'added',     label: appSettings.lang_status_added     || 'Added' },
+    ];
+
     return (
         <div className="page-container" style={{ maxWidth: 860, padding: '24px 16px' }}>
             {/* Header */}
@@ -112,24 +131,24 @@ export default function RequestsPage() {
                             <line x1="12" y1="18" x2="12" y2="12"/>
                             <line x1="9" y1="15" x2="15" y2="15"/>
                         </svg>
-                        Series Requests
+                        {appSettings.lang_series_requests_title || 'Series Requests'}
                     </h1>
                     <p className="requests-subtitle">
-                        Request a series to be added. Upvote others&apos; requests to help prioritize them.
+                        {appSettings.lang_series_requests_subtitle || 'Request a series to be added. Upvote others\u2019 requests to help prioritize them.'}
                     </p>
                 </div>
                 {user ? (
                     <button className="btn btn-primary" onClick={() => { setShowForm(v => !v); setError(''); setSuccess(''); }}>
                         {showForm ? (
-                            <><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg> Cancel</>
+                            <><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg> {appSettings.lang_cancel || 'Cancel'}</>
                         ) : (
-                            <><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Request a Series</>
+                            <><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> {appSettings.lang_request_a_series || 'Request a Series'}</>
                         )}
                     </button>
                 ) : (
                     <Link href="/login" className="btn btn-primary">
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
-                        Login to Request
+                        {appSettings.lang_login_to_request || 'Login to Request'}
                     </Link>
                 )}
             </div>
@@ -155,14 +174,14 @@ export default function RequestsPage() {
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: 6, verticalAlign: 'middle' }}>
                             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
                         </svg>
-                        New Series Request
+                        {appSettings.lang_new_series_request || 'New Series Request'}
                     </h3>
 
                     <div className="rform-field">
-                        <label>Series Title <span style={{ color: 'var(--danger)' }}>*</span></label>
+                        <label>{appSettings.lang_series_title_label || 'Series Title'} <span style={{ color: 'var(--danger)' }}>*</span></label>
                         <input
                             type="text"
-                            placeholder="e.g. Solo Leveling"
+                            placeholder={appSettings.lang_series_title_placeholder || 'e.g. Solo Leveling'}
                             value={title}
                             onChange={e => setTitle(e.target.value)}
                             autoFocus
@@ -172,12 +191,12 @@ export default function RequestsPage() {
 
                     <div className="rform-field">
                         <label>
-                            Reference Link
-                            <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 400, marginLeft: 6 }}>(optional)</span>
+                            {appSettings.lang_reference_link || 'Reference Link'}
+                            <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 400, marginLeft: 6 }}>({appSettings.lang_optional || 'optional'})</span>
                         </label>
                         <input
                             type="url"
-                            placeholder="https://myanimelist.net/... or similar"
+                            placeholder={appSettings.lang_reference_link_placeholder || 'https://myanimelist.net/... or similar'}
                             value={link}
                             onChange={e => setLink(e.target.value)}
                         />
@@ -185,11 +204,11 @@ export default function RequestsPage() {
 
                     <div className="rform-field">
                         <label>
-                            Why should we add this?
-                            <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 400, marginLeft: 6 }}>(optional)</span>
+                            {appSettings.lang_why_add_this || 'Why should we add this?'}
+                            <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 400, marginLeft: 6 }}>({appSettings.lang_optional || 'optional'})</span>
                         </label>
                         <textarea
-                            placeholder="Tell us a bit about this series..."
+                            placeholder={appSettings.lang_why_add_placeholder || 'Tell us a bit about this series...'}
                             value={reason}
                             onChange={e => setReason(e.target.value)}
                             rows={2}
@@ -199,12 +218,12 @@ export default function RequestsPage() {
                     <div style={{ display: 'flex', gap: 10 }}>
                         <button type="submit" className="btn btn-primary" disabled={submitting}>
                             {submitting ? (
-                                <><div className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> Submitting...</>
+                                <><div className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> {appSettings.lang_submitting || 'Submitting...'}</>
                             ) : (
-                                <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg> Submit Request</>
+                                <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg> {appSettings.lang_submit_request || 'Submit Request'}</>
                             )}
                         </button>
-                        <button type="button" className="btn btn-ghost" onClick={() => { setShowForm(false); setError(''); }}>Cancel</button>
+                        <button type="button" className="btn btn-ghost" onClick={() => { setShowForm(false); setError(''); }}>{appSettings.lang_cancel || 'Cancel'}</button>
                     </div>
                 </form>
             )}
@@ -231,9 +250,9 @@ export default function RequestsPage() {
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
                         <line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/>
                     </svg>
-                    <p>No requests found.</p>
+                    <p>{appSettings.lang_no_requests_found || 'No requests found.'}</p>
                     {user && filter === 'all' && (
-                        <button className="btn btn-primary" onClick={() => setShowForm(true)} style={{ marginTop: 12 }}>Be the first to request!</button>
+                        <button className="btn btn-primary" onClick={() => setShowForm(true)} style={{ marginTop: 12 }}>{appSettings.lang_be_first_to_request || 'Be the first to request!'}</button>
                     )}
                 </div>
             ) : (
@@ -286,11 +305,11 @@ export default function RequestsPage() {
                                             {isExpanded && (
                                                 <div className="req-details">
                                                     {req.reason && (
-                                                        <div className="req-detail-block">
-                                                            <strong style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                                                                Why add it:
-                                                            </strong>
+                                                                <div className="req-detail-block">
+                                                                    <strong style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                                                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                                                                        {appSettings.lang_why_add_it || 'Why add it:'}
+                                                                    </strong>
                                                             <p>{req.reason}</p>
                                                         </div>
                                                     )}
@@ -298,7 +317,7 @@ export default function RequestsPage() {
                                                         <div className="req-detail-block">
                                                             <strong style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                                                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-                                                                Reference:
+                                                                {appSettings.lang_reference || 'Reference:'}
                                                             </strong>
                                                             <a href={req.source_url} target="_blank" rel="noopener noreferrer" className="req-link">
                                                                 {req.source_url.replace(/^https?:\/\//, '')}
@@ -309,7 +328,7 @@ export default function RequestsPage() {
                                                         <div className="req-detail-block req-admin-note">
                                                             <strong style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                                                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                                                                Admin note:
+                                                                {appSettings.lang_admin_note || 'Admin note:'}
                                                             </strong>
                                                             <p>{req.admin_note}</p>
                                                         </div>
@@ -321,9 +340,9 @@ export default function RequestsPage() {
                                                 onClick={() => setExpandedId(isExpanded ? null : req.id)}
                                             >
                                                 {isExpanded ? (
-                                                    <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m18 15-6-6-6 6"/></svg> Less</>
+                                                    <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m18 15-6-6-6 6"/></svg> {appSettings.lang_less || 'Less'}</>
                                                 ) : (
-                                                    <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m6 9 6 6 6-6"/></svg> Details</>
+                                                    <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m6 9 6 6 6-6"/></svg> {appSettings.lang_details || 'Details'}</>
                                                 )}
                                             </button>
                                         </>

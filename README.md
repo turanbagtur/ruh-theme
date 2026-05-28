@@ -1,36 +1,56 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Ruh Theme (YomiTranslate)
 
-## Getting Started
+Ruh Theme, çeviri grupları (Manga, Webtoon, Novel) için geliştirilmiş, yüksek performanslı ve modern bir Next.js okuma platformudur. Hızlı sayfa yüklemeleri, gelişmiş SEO uyumluluğu ve zengin kullanıcı deneyimi sunar.
 
-First, run the development server:
+## Özellikler
 
+- **Gelişmiş Yönetim Paneli:** Serileri, bölümleri, sayfaları, kullanıcıları ve yorumları tek bir yerden kolayca yönetin.
+- **Kullanıcı Etkileşimi:** Yorum yapma, favoriye ekleme, okuma listesi oluşturma ve yorumlarda Tenor GIF desteği.
+- **Oyunlaştırma (Gamification):** Okudukça ve etkileşime girdikçe kazanılan Yomi Puanları, görevler (quests) ve seviye/rozet sistemi.
+- **Rol Tabanlı Erişim (RBAC):** Admin, Manager, Moderator ve Team Member gibi detaylı ve güvenli yetkilendirme sistemi.
+- **Performans ve SEO:** Next.js Server Components, App Router, Turbopack, yerleşik görsel optimizasyonu (WebP) ve otomatik Sitemap/Robots.txt.
+- **Veritabanı:** Kurulumu ve yönetimi son derece kolay olan yüksek hızlı `better-sqlite3` altyapısı.
+
+## Kurulum ve Çalıştırma (Geliştirici Ortamı)
+
+Projeyi yerel ortamınızda çalıştırmak için aşağıdaki adımları izleyin.
+
+### Gereksinimler
+
+- [Node.js](https://nodejs.org/) (v18 veya üzeri önerilir)
+- npm, yarn, pnpm veya bun
+
+### Kurulum Adımları
+
+1. Repoyu bilgisayarınıza klonlayın:
+   ```bash
+   git clone https://github.com/turanbagtur/ruh-theme.git
+   cd ruh-theme
+   ```
+
+2. Gerekli paketleri ve bağımlılıkları yükleyin:
+   ```bash
+   npm install
+   ```
+
+3. Geliştirme (Development) sunucusunu başlatın:
+   ```bash
+   npm run dev
+   ```
+
+4. Tarayıcınızda [http://localhost:3000](http://localhost:3000) adresini açarak siteyi görüntüleyin.
+
+## Yayınlama ve Sunucu Kurulumu (Deployment)
+
+Projeyi gerçek bir sunucuya (VPS) kurmak ve internete açmak için çok kapsamlı bir kurulum rehberi hazırladık. Lütfen projenin ana dizinindeki detaylı **[DEPLOYMENT.md](DEPLOYMENT.md)** dosyasını inceleyin.
+
+Genel olarak Production (Canlı) ortam derlemesi için:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run build
+npm run start
 ```
+komutları kullanılır.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Katkıda Bulunma
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Geri bildirimleriniz ve pull request (PR) gönderileriniz her zaman değerlidir! Sistemi daha iyi hale getirmek için Issues kısmından bizimle iletişime geçebilirsiniz.

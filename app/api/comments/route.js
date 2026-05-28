@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { getUserFromRequest } from '@/lib/auth';
+import { createRateLimiter } from '@/lib/ratelimit';
+
+const commentsRateLimiter = createRateLimiter(10, 60 * 1000);
 
 // Escape HTML special characters to prevent XSS
 function escapeHtml(str) {
@@ -21,6 +24,7 @@ export async function GET(request) {
         const page = parseInt(searchParams.get('page')) || 1;
         const limit = parseInt(searchParams.get('limit')) || 20;
         const sort = searchParams.get('sort') || 'best';
+        const paragraphIndex = searchParams.get('paragraphIndex');
         const offset = (page - 1) * limit;
 
         const db = getDb();
@@ -49,6 +53,10 @@ export async function GET(request) {
         } else {
             whereClause = 'c.series_id = ?';
             whereParam = seriesId;
+        }
+        
+        if (paragraphIndex !== null && paragraphIndex !== undefined) {
+            whereClause += ` AND c.paragraph_index = ${parseInt(paragraphIndex)}`;
         }
 
         let orderByClause = 'c.created_at DESC';
@@ -110,12 +118,28 @@ export async function GET(request) {
 
 export async function POST(request) {
     try {
-        const user = getUserFromRequest(request);
-        if (!user) {
-            return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+        const rateLimitResult = commentsRateLimiter(request);
+        if (!rateLimitResult.success) {
+            return NextResponse.json(
+                { error: 'Too many requests. Please try again later.' },
+                { status: 429, headers: { 'Retry-After': String(rateLimitResult.retryAfter) } }
+            );
         }
 
-        const { chapterId, seriesId, content, parentId, isSpoiler } = await request.json();
+        const user = getUserFromRequest(request);
+        if (!user) {
+            return NextResponse.json({ error: 'Kimlik doğrulaması gerekiyor' }, { status: 401 });
+        }
+
+        const db = getDb();
+        const dbUser = db.prepare('SELECT banned_until FROM users WHERE id = ?').get(user.id);
+        if (dbUser && dbUser.banned_until && new Date(dbUser.banned_until) > new Date()) {
+            return NextResponse.json({
+                error: `Yorum yapmanız engellendi. Engelin biteceği tarih: ${new Date(dbUser.banned_until).toLocaleString('tr-TR')}`
+            }, { status: 403 });
+        }
+
+        const { chapterId, seriesId, content, parentId, isSpoiler, paragraphIndex } = await request.json();
 
         if (!content || (!chapterId && !seriesId)) {
             return NextResponse.json({ error: 'Content and either chapterId or seriesId are required' }, { status: 400 });
@@ -131,12 +155,10 @@ export async function POST(request) {
             return NextResponse.json({ error: 'Comment too long (max 2000 characters)' }, { status: 400 });
         }
 
-        // Do NOT pre-escape HTML here — the client's renderMarkdown handles escaping
         // before applying markdown transforms, preventing XSS without double-encoding.
-        const db = getDb();
         const result = db.prepare(
-            'INSERT INTO comments (user_id, chapter_id, series_id, content, parent_id, is_spoiler) VALUES (?, ?, ?, ?, ?, ?)'
-        ).run(user.id, chapterId || null, seriesId || null, trimmedContent, parentId || null, isSpoiler ? 1 : 0);
+            'INSERT INTO comments (user_id, chapter_id, series_id, content, parent_id, is_spoiler, paragraph_index) VALUES (?, ?, ?, ?, ?, ?, ?)'
+        ).run(user.id, chapterId || null, seriesId || null, trimmedContent, parentId || null, isSpoiler ? 1 : 0, paragraphIndex !== undefined ? paragraphIndex : null);
 
         const comment = db.prepare(`
             SELECT c.*, u.username, u.avatar_url, u.yomi_points,

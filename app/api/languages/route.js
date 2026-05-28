@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { SUPPORTED_LANGUAGES } from '@/lib/torii';
 
+// Dil seçme özelliği kaldırıldı — endpoint boş liste döndürür
 export async function GET() {
-    return NextResponse.json({ languages: SUPPORTED_LANGUAGES });
+    return NextResponse.json({ languages: [] });
 }

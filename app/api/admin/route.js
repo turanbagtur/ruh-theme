@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { generateSlug } from '@/lib/db';
-import { requireAdmin } from '@/lib/auth';
-import { saveApiKey, getActiveApiKey, SUPPORTED_LANGUAGES } from '@/lib/torii';
+import { requireAdmin, requireAuth, hasPermission } from '@/lib/auth';
 import fs from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
+import { optimizeCoverImage } from '@/lib/imageOptimizer';
 
 // ── Convert any image buffer to WebP (dynamic import to avoid Next.js bundling sharp) ──
 async function toWebP(buffer, quality = 85) {
@@ -57,16 +57,32 @@ function makeUniqueSlug(db, title, excludeId = null) {
 
 export async function POST(request) {
     try {
-        requireAdmin(request);
+        const user = requireAuth(request);
         const formData = await request.formData();
         const action = formData.get('action');
 
-        if (action === 'save-api-key') {
-            const keyName = formData.get('keyName') || 'Default Key';
-            const apiKey = formData.get('apiKey');
-            if (!apiKey) return NextResponse.json({ error: 'API key is required' }, { status: 400 });
-            saveApiKey(keyName, apiKey, 'torii');
-            return NextResponse.json({ message: 'API key saved securely' });
+        // Check basic permissions based on action category
+        let requiredPerm = 'admin';
+        if (['add-series', 'update-series', 'delete-series', 'delete-media'].includes(action)) requiredPerm = 'manage_series';
+        else if (['add-chapter', 'update-chapter', 'delete-chapter', 'delete-all-chapters', 'delete-selected-chapters', 'upload-pages', 'delete-page'].includes(action)) requiredPerm = 'upload_chapters';
+        else if (['delete-comment', 'delete-all-user-comments'].includes(action)) requiredPerm = 'manage_comments';
+        else if (['delete-user', 'change-user-role', 'reset-user-points', 'add-user-points', 'ban_user'].includes(action)) requiredPerm = 'manage_users';
+
+        if (!hasPermission(user, requiredPerm) && !['admin', 'manager'].includes(user.role) && user.role !== 'manager') {
+            return NextResponse.json({ error: 'Forbidden: Insufficient permissions for this action' }, { status: 403 });
+        }
+
+        // Manager specific restrictions on user management
+        if (['delete-user', 'change-user-role', 'ban_user'].includes(action) && user.role === 'manager') {
+            const db = getDb();
+            const targetUserId = formData.get('userId');
+            const targetUser = db.prepare('SELECT role FROM users WHERE id = ?').get(targetUserId);
+            if (targetUser && targetUser.role === 'admin') {
+                return NextResponse.json({ error: 'Forbidden: Managers cannot modify admin users' }, { status: 403 });
+            }
+            if (action === 'change-user-role' && formData.get('role') === 'admin') {
+                return NextResponse.json({ error: 'Forbidden: Managers cannot assign admin role' }, { status: 403 });
+            }
         }
 
         if (action === 'add-series') {
@@ -80,24 +96,25 @@ export async function POST(request) {
             const genres = formData.get('genres') || '[]';
             const rating = parseFloat(formData.get('rating')) || 0;
             const published = parseInt(formData.get('published')) || 0;
+            const altNames = formData.get('alt_names') || '';
 
             let coverUrl = '/demo/cover1.jpg';
             const coverFile = formData.get('cover');
             if (coverFile && coverFile.size > 0) {
                 try {
-                    const coverDir = path.join(process.cwd(), 'public', 'uploads', 'covers');
+                    const coverDir = path.join(/*turbopackIgnore: true*/ process.cwd(), 'public', 'uploads', 'covers');
                     if (!fs.existsSync(coverDir)) fs.mkdirSync(coverDir, { recursive: true });
                     const rawBuffer = Buffer.from(await coverFile.arrayBuffer());
-                    let fileBuffer, fileName;
+                    let fileName = `cover_${uuidv4()}.webp`;
+                    const coverFilePath = path.join(coverDir, fileName);
                     try {
-                        fileBuffer = await toWebP(rawBuffer, 90);
-                        fileName = `cover_${uuidv4()}.webp`;
-                    } catch {
-                        fileBuffer = rawBuffer;
+                        await optimizeCoverImage(rawBuffer, coverFilePath);
+                    } catch (coverOptErr) {
+                        console.error('Cover image optimization failed, saving original:', coverOptErr.message);
                         const ext = path.extname(coverFile.name || '') || '.jpg';
                         fileName = `cover_${uuidv4()}${ext}`;
+                        fs.writeFileSync(path.join(coverDir, fileName), rawBuffer);
                     }
-                    fs.writeFileSync(path.join(coverDir, fileName), fileBuffer);
                     coverUrl = `/uploads/covers/${fileName}`;
                 } catch (coverErr) {
                     console.error('Cover upload error:', coverErr.message);
@@ -105,9 +122,11 @@ export async function POST(request) {
             }
 
             const slug = makeUniqueSlug(db, title);
+            // Ensure alt_names column exists
+            try { db.prepare('ALTER TABLE series ADD COLUMN alt_names TEXT DEFAULT ""').run(); } catch(e) {}
             const result = db.prepare(
-                'INSERT INTO series (title, slug, description, cover_url, author, artist, status, type, genres, rating, published) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-            ).run(title, slug, description, coverUrl, author, artist, status, type, genres, rating, published);
+                'INSERT INTO series (title, slug, description, cover_url, author, artist, status, type, genres, rating, published, alt_names) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            ).run(title, slug, description, coverUrl, author, artist, status, type, genres, rating, published, altNames);
 
             return NextResponse.json({ seriesId: result.lastInsertRowid, slug, message: published ? 'Series published!' : 'Series saved as draft' }, { status: 201 });
         }
@@ -124,24 +143,25 @@ export async function POST(request) {
             const genres = formData.get('genres') || '[]';
             const rating = parseFloat(formData.get('rating')) || 0;
             const published = parseInt(formData.get('published')) || 0;
+            const altNames = formData.get('alt_names') || '';
 
             let coverUrl = null;
             const coverFile = formData.get('cover');
             if (coverFile && coverFile.size > 0) {
                 try {
-                    const coverDir = path.join(process.cwd(), 'public', 'uploads', 'covers');
+                    const coverDir = path.join(/*turbopackIgnore: true*/ process.cwd(), 'public', 'uploads', 'covers');
                     if (!fs.existsSync(coverDir)) fs.mkdirSync(coverDir, { recursive: true });
                     const rawBuffer = Buffer.from(await coverFile.arrayBuffer());
-                    let fileBuffer, fileName;
+                    let fileName = `cover_${uuidv4()}.webp`;
+                    const coverFilePath = path.join(coverDir, fileName);
                     try {
-                        fileBuffer = await toWebP(rawBuffer, 90);
-                        fileName = `cover_${uuidv4()}.webp`;
-                    } catch {
-                        fileBuffer = rawBuffer;
+                        await optimizeCoverImage(rawBuffer, coverFilePath);
+                    } catch (coverOptErr) {
+                        console.error('Cover image optimization failed, saving original:', coverOptErr.message);
                         const ext = path.extname(coverFile.name || '') || '.jpg';
                         fileName = `cover_${uuidv4()}${ext}`;
+                        fs.writeFileSync(path.join(coverDir, fileName), rawBuffer);
                     }
-                    fs.writeFileSync(path.join(coverDir, fileName), fileBuffer);
                     coverUrl = `/uploads/covers/${fileName}`;
                 } catch (coverErr) {
                     console.error('Cover update error:', coverErr.message);
@@ -155,12 +175,14 @@ export async function POST(request) {
                 slug = makeUniqueSlug(db, title, seriesId);
             }
 
+            // Ensure alt_names column exists
+            try { db.prepare('ALTER TABLE series ADD COLUMN alt_names TEXT DEFAULT ""').run(); } catch(e) {}
             if (coverUrl) {
-                db.prepare('UPDATE series SET title=?, slug=?, description=?, cover_url=?, author=?, artist=?, status=?, type=?, genres=?, rating=?, published=? WHERE id=?')
-                    .run(title, slug, description, coverUrl, author, artist, status, type, genres, rating, published, seriesId);
+                db.prepare('UPDATE series SET title=?, slug=?, description=?, cover_url=?, author=?, artist=?, status=?, type=?, genres=?, rating=?, published=?, alt_names=? WHERE id=?')
+                    .run(title, slug, description, coverUrl, author, artist, status, type, genres, rating, published, altNames, seriesId);
             } else {
-                db.prepare('UPDATE series SET title=?, slug=?, description=?, author=?, artist=?, status=?, type=?, genres=?, rating=?, published=? WHERE id=?')
-                    .run(title, slug, description, author, artist, status, type, genres, rating, published, seriesId);
+                db.prepare('UPDATE series SET title=?, slug=?, description=?, author=?, artist=?, status=?, type=?, genres=?, rating=?, published=?, alt_names=? WHERE id=?')
+                    .run(title, slug, description, author, artist, status, type, genres, rating, published, altNames, seriesId);
             }
 
             return NextResponse.json({ message: 'Series updated', slug });
@@ -171,10 +193,11 @@ export async function POST(request) {
             const chapterId = formData.get('chapterId');
             const chapterNumber = formData.get('chapterNumber');
             const title = formData.get('title') || `Chapter ${chapterNumber}`;
+            const content = formData.get('content') || null;
 
             db.prepare(
-                'UPDATE chapters SET chapter_number = ?, title = ? WHERE id = ?'
-            ).run(chapterNumber, title, chapterId);
+                'UPDATE chapters SET chapter_number = ?, title = ?, content = ? WHERE id = ?'
+            ).run(chapterNumber, title, content, chapterId);
 
             return NextResponse.json({ message: 'Chapter updated' });
         }
@@ -184,10 +207,25 @@ export async function POST(request) {
             const seriesId = formData.get('seriesId');
             const chapterNumber = formData.get('chapterNumber');
             const title = formData.get('title') || `Chapter ${chapterNumber}`;
+            const content = formData.get('content') || null;
 
             const result = db.prepare(
-                'INSERT INTO chapters (series_id, chapter_number, title) VALUES (?, ?, ?)'
-            ).run(seriesId, chapterNumber, title);
+                'INSERT INTO chapters (series_id, chapter_number, title, content) VALUES (?, ?, ?, ?)'
+            ).run(seriesId, chapterNumber, title, content);
+
+            // Trigger Google Indexing in the background
+            try {
+                const series = db.prepare('SELECT slug, id FROM series WHERE id = ?').get(seriesId);
+                if (series) {
+                    const slug = series.slug || series.id;
+                    const chUrl = `${BASE_URL}/series/${slug}/chapter/${chapterNumber}`;
+                    import('@/lib/googleIndexing').then(({ notifyGoogleIndexing }) => {
+                        notifyGoogleIndexing(chUrl);
+                    }).catch(() => {});
+                }
+            } catch (indexingErr) {
+                console.error('Google Indexing API trigger error:', indexingErr);
+            }
 
             return NextResponse.json({ chapterId: result.lastInsertRowid, message: 'Chapter created' }, { status: 201 });
         }
@@ -198,7 +236,7 @@ export async function POST(request) {
             // Delete associated pages files
             const pages = db.prepare('SELECT image_path FROM pages WHERE chapter_id = ?').all(chapterId);
             for (const p of pages) {
-                const filePath = path.join(process.cwd(), 'public', p.image_path);
+                const filePath = path.join(/*turbopackIgnore: true*/ process.cwd(), 'public', p.image_path);
                 try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch { }
             }
             db.prepare('DELETE FROM pages WHERE chapter_id = ?').run(chapterId);
@@ -213,10 +251,10 @@ export async function POST(request) {
             for (const ch of chapters) {
                 const pages = db.prepare('SELECT image_path FROM pages WHERE chapter_id = ?').all(ch.id);
                 for (const p of pages) {
-                    const filePath = path.join(process.cwd(), 'public', p.image_path);
+                    const filePath = path.join(/*turbopackIgnore: true*/ process.cwd(), 'public', p.image_path);
                     try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch { }
                 }
-                const chapterDir = path.join(process.cwd(), 'public', 'uploads', 'pages', ch.id.toString());
+                const chapterDir = path.join(/*turbopackIgnore: true*/ process.cwd(), 'public', 'uploads', 'pages', ch.id.toString());
                 try { if (fs.existsSync(chapterDir)) fs.rmSync(chapterDir, { recursive: true, force: true }); } catch { }
             }
             db.prepare('DELETE FROM chapters WHERE series_id = ?').run(seriesId);
@@ -229,10 +267,10 @@ export async function POST(request) {
             for (const chId of chapterIds) {
                 const pages = db.prepare('SELECT image_path FROM pages WHERE chapter_id = ?').all(chId);
                 for (const p of pages) {
-                    const filePath = path.join(process.cwd(), 'public', p.image_path);
+                    const filePath = path.join(/*turbopackIgnore: true*/ process.cwd(), 'public', p.image_path);
                     try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch { }
                 }
-                const chapterDir = path.join(process.cwd(), 'public', 'uploads', 'pages', chId.toString());
+                const chapterDir = path.join(/*turbopackIgnore: true*/ process.cwd(), 'public', 'uploads', 'pages', chId.toString());
                 try { if (fs.existsSync(chapterDir)) fs.rmSync(chapterDir, { recursive: true, force: true }); } catch { }
                 db.prepare('DELETE FROM chapters WHERE id = ?').run(chId);
             }
@@ -263,7 +301,7 @@ export async function POST(request) {
             const maxPage = db.prepare('SELECT MAX(page_number) as max FROM pages WHERE chapter_id = ?').get(chapterId);
             const startNum = (maxPage?.max || 0) + 1;
 
-            const pagesDir = path.join(process.cwd(), 'public', 'uploads', 'pages', chapterId.toString());
+            const pagesDir = path.join(/*turbopackIgnore: true*/ process.cwd(), 'public', 'uploads', 'pages', chapterId.toString());
             if (!fs.existsSync(pagesDir)) fs.mkdirSync(pagesDir, { recursive: true });
 
             const uploaded = [];
@@ -308,7 +346,7 @@ export async function POST(request) {
             const pageId = formData.get('pageId');
             const page = db.prepare('SELECT image_path FROM pages WHERE id = ?').get(pageId);
             if (page) {
-                const filePath = path.join(process.cwd(), 'public', page.image_path);
+                const filePath = path.join(/*turbopackIgnore: true*/ process.cwd(), 'public', page.image_path);
                 try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch { }
             }
             db.prepare('DELETE FROM pages WHERE id = ?').run(pageId);
@@ -326,7 +364,7 @@ export async function POST(request) {
             const db = getDb();
             const userId = formData.get('userId');
             const role = formData.get('role');
-            if (!['user', 'admin'].includes(role)) return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
+            if (!['user', 'team_member', 'moderator', 'manager', 'admin'].includes(role)) return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
             db.prepare('UPDATE users SET role = ? WHERE id = ?').run(role, userId);
             return NextResponse.json({ message: `User role updated to ${role}` });
         }
@@ -368,7 +406,7 @@ export async function POST(request) {
             for (const ch of chapters) {
                 const pages = db.prepare('SELECT image_path FROM pages WHERE chapter_id = ?').all(ch.id);
                 for (const p of pages) {
-                    const filePath = path.join(process.cwd(), 'public', p.image_path);
+                    const filePath = path.join(/*turbopackIgnore: true*/ process.cwd(), 'public', p.image_path);
                     try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch { }
                 }
                 // Delete translations for pages in this chapter
@@ -381,7 +419,37 @@ export async function POST(request) {
             db.prepare('DELETE FROM favorites WHERE series_id = ?').run(seriesId);
             db.prepare('DELETE FROM chapters WHERE series_id = ?').run(seriesId);
             db.prepare('DELETE FROM series WHERE id = ?').run(seriesId);
+            // Aktivite logu
+            db.prepare('INSERT INTO admin_logs (admin_id, admin_username, action, details) VALUES (?, ?, ?, ?)').run(
+                user.id, user.username, 'delete_series', `Deleted series ID: ${seriesId}`
+            );
             return NextResponse.json({ message: 'Series deleted' });
+        }
+
+        if (action === 'ban_user') {
+            const db = getDb();
+            const userId = formData.get('userId');
+            const days = formData.get('days') ? parseInt(formData.get('days')) : null;
+            if (!userId) return NextResponse.json({ error: 'userId required' }, { status: 400 });
+
+            let bannedUntil = null;
+            if (days && days > 0) {
+                const date = new Date();
+                date.setDate(date.getDate() + days);
+                bannedUntil = date.toISOString();
+            }
+
+            db.prepare('UPDATE users SET banned_until = ? WHERE id = ?').run(bannedUntil, userId);
+
+            // Aktivite logu
+            const actionText = days && days > 0
+                ? `Banned user ID ${userId} for ${days} days`
+                : `Unbanned user ID ${userId}`;
+            db.prepare('INSERT INTO admin_logs (admin_id, admin_username, action, details) VALUES (?, ?, ?, ?)').run(
+                user.id, user.username, days && days > 0 ? 'ban_user' : 'unban_user', actionText
+            );
+
+            return NextResponse.json({ success: true, bannedUntil });
         }
 
         if (action === 'delete-media') {
@@ -391,7 +459,7 @@ export async function POST(request) {
             if (!filePath.startsWith('/uploads/')) {
                 return NextResponse.json({ error: 'Invalid path' }, { status: 400 });
             }
-            const fullPath = path.join(process.cwd(), 'public', filePath);
+            const fullPath = path.join(/*turbopackIgnore: true*/ process.cwd(), 'public', filePath);
             try {
                 if (fs.existsSync(fullPath)) {
                     fs.unlinkSync(fullPath);
@@ -412,7 +480,10 @@ export async function POST(request) {
 
 export async function GET(request) {
     try {
-        requireAdmin(request);
+        const user = requireAuth(request);
+        if (!['admin', 'manager', 'moderator', 'team_member'].includes(user.role)) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
         const db = getDb();
         const { searchParams } = new URL(request.url);
         const seriesId = searchParams.get('seriesId');
@@ -425,7 +496,7 @@ export async function GET(request) {
             const categoryFilter = searchParams.get('category') || 'all';
             
             const mediaFiles = [];
-            const uploadsBase = path.join(process.cwd(), 'public', 'uploads');
+            const uploadsBase = path.join(/*turbopackIgnore: true*/ process.cwd(), 'public', 'uploads');
             const scanDir = (dirPath, category) => {
                 if (!fs.existsSync(dirPath)) return;
                 try {
@@ -439,7 +510,7 @@ export async function GET(request) {
                             
                             try {
                                 const stat = fs.statSync(full);
-                                const relativePath = full.replace(path.join(process.cwd(), 'public'), '').replace(/\\/g, '/');
+                                const relativePath = full.replace(path.join(/*turbopackIgnore: true*/ process.cwd(), 'public'), '').replace(/\\/g, '/');
                                 mediaFiles.push({
                                     name: entry.name,
                                     path: relativePath,
@@ -467,17 +538,63 @@ export async function GET(request) {
             return NextResponse.json({ media: paginatedMedia, total, hasMore });
         }
 
+        // Paginated users list
+        if (action === 'list_users') {
+            const page = parseInt(searchParams.get('page') || '1');
+            const limit = parseInt(searchParams.get('limit') || '20');
+            const offset = (page - 1) * limit;
+
+            const totalCount = db.prepare('SELECT COUNT(*) as count FROM users').get().count;
+            const totalPages = Math.ceil(totalCount / limit);
+            const users = db.prepare('SELECT id, username, email, role, created_at, banned_until FROM users ORDER BY created_at DESC LIMIT ? OFFSET ?').all(limit, offset);
+
+            return NextResponse.json({ users, pagination: { page, limit, totalPages, totalCount } });
+        }
+
+        // Paginated series list
+        if (action === 'list_series') {
+            const page = parseInt(searchParams.get('page') || '1');
+            const limit = parseInt(searchParams.get('limit') || '20');
+            const offset = (page - 1) * limit;
+
+            const totalCount = db.prepare('SELECT COUNT(*) as count FROM series').get().count;
+            const totalPages = Math.ceil(totalCount / limit);
+            const series = db.prepare(`
+                SELECT s.id, s.title, s.slug, s.status, s.views, s.rating, s.published, s.cover_url, s.created_at,
+                    (SELECT COUNT(*) FROM chapters WHERE series_id = s.id) as chapter_count
+                FROM series s ORDER BY s.created_at DESC LIMIT ? OFFSET ?
+            `).all(limit, offset);
+
+            return NextResponse.json({ series, pagination: { page, limit, totalPages, totalCount } });
+        }
+
+        // Son 7 günlük okuma istatistikleri
+        if (action === 'reading_stats') {
+            let dailyStats = [];
+            try {
+                dailyStats = db.prepare(`
+                    SELECT date(created_at) as date, COUNT(*) as count
+                    FROM read_history
+                    WHERE created_at >= date('now', '-7 days')
+                    GROUP BY date(created_at)
+                    ORDER BY date ASC
+                `).all();
+            } catch (e) {
+                // read_chapters tablosu yoksa boş dön
+            }
+            return NextResponse.json({ dailyStats });
+        }
+
         // If requesting a specific series detail for admin
         if (seriesId) {
             const series = db.prepare('SELECT * FROM series WHERE id = ?').get(seriesId);
             if (!series) return NextResponse.json({ error: 'Series not found' }, { status: 404 });
 
             const chapters = db.prepare(`
-                SELECT ch.*, 
-                    (SELECT COUNT(*) FROM pages WHERE chapter_id = ch.id) as page_count,
-                    (SELECT COUNT(DISTINCT t.language_code) FROM translations t JOIN pages p ON t.page_id = p.id WHERE p.chapter_id = ch.id) as translation_count
-                FROM chapters ch 
-                WHERE ch.series_id = ? 
+                SELECT ch.*,
+                    (SELECT COUNT(*) FROM pages WHERE chapter_id = ch.id) as page_count
+                FROM chapters ch
+                WHERE ch.series_id = ?
                 ORDER BY ch.chapter_number ASC
             `).all(seriesId);
 
@@ -486,7 +603,7 @@ export async function GET(request) {
 
         const users = db.prepare('SELECT id, username, email, role, created_at FROM users ORDER BY created_at DESC').all();
         const recentComments = db.prepare(`
-      SELECT c.id, c.content, c.created_at, u.username,
+      SELECT c.id, c.content, c.created_at, u.username, c.user_id, u.banned_until,
         COALESCE(ch.title, 'Series Comment') as chapter_title,
         COALESCE(s.title, s2.title) as series_title
       FROM comments c
@@ -503,29 +620,47 @@ export async function GET(request) {
             FROM series s ORDER BY s.created_at DESC
         `).all();
 
-        const uploadsSize = getDirSize(path.join(process.cwd(), 'public', 'uploads'));
-        const translationsSize = getDirSize(path.join(process.cwd(), 'public', 'translations'));
+        const uploadsBase = path.join(/*turbopackIgnore: true*/ process.cwd(), 'public', 'uploads');
+        const coversSize = getDirSize(path.join(uploadsBase, 'covers'));
+        const avatarsSize = getDirSize(path.join(uploadsBase, 'avatars'));
+        const pagesSize = getDirSize(path.join(uploadsBase, 'pages'));
+        const uploadsSize = coversSize + avatarsSize + pagesSize;
         const dbPath = process.env.DATABASE_PATH || './data/manga.db';
         let dbSize = 0;
-        try { dbSize = fs.statSync(path.join(process.cwd(), dbPath)).size; } catch {}
+        try { dbSize = fs.statSync(path.join(/*turbopackIgnore: true*/ process.cwd(), dbPath)).size; } catch {}
+        const totalStorageBytes = uploadsSize + dbSize;
+
+        let totalTranslations = 0;
+        try { totalTranslations = db.prepare('SELECT COUNT(*) as count FROM translated_pages').get()?.count || 0; } catch {}
+        let totalViews = 0;
+        try { totalViews = db.prepare('SELECT COALESCE(SUM(views),0) as total FROM series').get()?.total || 0; } catch {}
+        let totalFavorites = 0;
+        try { totalFavorites = db.prepare('SELECT COUNT(*) as count FROM favorites').get()?.count || 0; } catch {}
+        let totalReadingList = 0;
+        try { totalReadingList = db.prepare('SELECT COUNT(*) as count FROM reading_list').get()?.count || 0; } catch {}
 
         const stats = {
             totalSeries: db.prepare('SELECT COUNT(*) as count FROM series').get().count,
+            totalPublished: db.prepare("SELECT COUNT(*) as count FROM series WHERE published=1").get().count,
             totalChapters: db.prepare('SELECT COUNT(*) as count FROM chapters').get().count,
             totalPages: db.prepare('SELECT COUNT(*) as count FROM pages').get().count,
-            totalTranslations: db.prepare('SELECT COUNT(*) as count FROM translations').get().count,
             totalUsers: db.prepare('SELECT COUNT(*) as count FROM users').get().count,
             totalComments: db.prepare('SELECT COUNT(*) as count FROM comments').get().count,
-            hasApiKey: !!getActiveApiKey(),
-            supportedLanguages: SUPPORTED_LANGUAGES,
+            totalTranslations,
+            totalViews,
+            totalFavorites,
+            totalReadingList,
             users,
             recentComments,
             allSeries,
             storage: {
                 uploads: { bytes: uploadsSize, formatted: formatBytes(uploadsSize) },
-                translations: { bytes: translationsSize, formatted: formatBytes(translationsSize) },
-                database: { bytes: dbSize, formatted: formatBytes(dbSize) },
-                total: { bytes: uploadsSize + translationsSize + dbSize, formatted: formatBytes(uploadsSize + translationsSize + dbSize) },
+                covers: { bytes: coversSize, formatted: formatBytes(coversSize), pct: totalStorageBytes > 0 ? Math.round(coversSize / totalStorageBytes * 100) : 0 },
+                avatars: { bytes: avatarsSize, formatted: formatBytes(avatarsSize), pct: totalStorageBytes > 0 ? Math.round(avatarsSize / totalStorageBytes * 100) : 0 },
+                pages: { bytes: pagesSize, formatted: formatBytes(pagesSize), pct: totalStorageBytes > 0 ? Math.round(pagesSize / totalStorageBytes * 100) : 0 },
+                translations: { bytes: 0, formatted: formatBytes(0), pct: 0 },
+                database: { bytes: dbSize, formatted: formatBytes(dbSize), pct: totalStorageBytes > 0 ? Math.round(dbSize / totalStorageBytes * 100) : 0 },
+                total: { bytes: totalStorageBytes, formatted: formatBytes(totalStorageBytes) },
             },
         };
         return NextResponse.json(stats);

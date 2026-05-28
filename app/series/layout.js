@@ -1,9 +1,9 @@
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://yomitranslate.com';
 
 export const metadata = {
-    title: 'Browse Manga — All Series | YomiTranslate',
-    description: 'Browse thousands of manga, manhwa and manhua series. Filter by genre, status, and type. Read online for free with AI-powered instant translation.',
-    keywords: 'browse manga, manga list, manga online, read manga free, manhwa, manhua, action manga, romance manga, fantasy manga, yomitranslate',
+    title: 'Manga Keşfet — Tüm Seriler | YomiTranslate',
+    description: 'Binlerce manga, manhwa ve manhua serisine göz atın. Tür, durum ve tipe göre filtreleyin. Yapay zeka destekli anında çeviri ile Türkçe manga okuma deneyimini ücretsiz yaşayın.',
+    keywords: 'manga keşfet, manga listesi, manga oku, ücretsiz manga oku, manhwa, manhua, aksiyon mangası, romantik manga, fantastik manga, yomitranslate',
     alternates: {
         canonical: `${BASE_URL}/series`,
     },
@@ -11,19 +11,19 @@ export const metadata = {
         type: 'website',
         url: `${BASE_URL}/series`,
         siteName: 'YomiTranslate',
-        title: 'Browse Manga — All Series | YomiTranslate',
-        description: 'Browse thousands of manga, manhwa and manhua series with AI translation. Filter by genre, status, and more.',
+        title: 'Manga Keşfet — Tüm Seriler | YomiTranslate',
+        description: 'Binlerce manga, manhwa ve manhua serisine göz atın. Yapay zeka destekli Türkçe çeviri ile ücretsiz manga okuyun.',
         images: [{
             url: `${BASE_URL}/icon-512.png`,
             width: 512,
             height: 512,
-            alt: 'YomiTranslate — Browse Manga',
+            alt: 'YomiTranslate — Manga Keşfet',
         }],
     },
     twitter: {
         card: 'summary_large_image',
-        title: 'Browse Manga | YomiTranslate',
-        description: 'Browse thousands of manga, manhwa and manhua series with AI translation.',
+        title: 'Manga Keşfet | YomiTranslate',
+        description: 'Binlerce manga, manhwa ve manhua serisine göz atın. Yapay zeka destekli Türkçe çeviri ile ücretsiz manga okuyun.',
         images: [`${BASE_URL}/icon-512.png`],
     },
 };
@@ -33,8 +33,8 @@ const collectionPageSchema = {
     '@context': 'https://schema.org',
     '@type': 'CollectionPage',
     '@id': `${BASE_URL}/series#collection`,
-    name: 'Browse Manga Series',
-    description: 'Browse thousands of manga, manhwa and manhua series with AI-powered instant translation.',
+    name: 'Manga Keşfet - Tüm Seriler',
+    description: 'Yapay zeka destekli anında çeviri ile binlerce manga, manhwa ve manhua serisini ücretsiz okuyun.',
     url: `${BASE_URL}/series`,
     isPartOf: {
         '@type': 'WebSite',
@@ -48,13 +48,13 @@ const collectionPageSchema = {
             {
                 '@type': 'ListItem',
                 position: 1,
-                name: 'Home',
+                name: 'Ana Sayfa',
                 item: BASE_URL,
             },
             {
                 '@type': 'ListItem',
                 position: 2,
-                name: 'Browse',
+                name: 'Manga Keşfet',
                 item: `${BASE_URL}/series`,
             },
         ],

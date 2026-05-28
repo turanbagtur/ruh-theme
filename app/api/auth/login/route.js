@@ -1,11 +1,15 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { verifyPassword, generateToken } from '@/lib/auth';
+import { createRateLimiter } from '@/lib/ratelimit';
 
 // Maintenance mode cookie max-age: 30 days
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 30;
 
+const loginRateLimiter = createRateLimiter(5, 15 * 60 * 1000);
+
 async function verifyTurnstile(token) {
+    if (process.env.DISABLE_TURNSTILE === '1') return { ok: true }; // disabled via env
     const db = getDb();
     const secretRow = db.prepare("SELECT setting_value FROM app_settings WHERE setting_key = 'turnstile_secret_key'").get();
     const secret = secretRow?.setting_value;
@@ -24,6 +28,14 @@ async function verifyTurnstile(token) {
 
 export async function POST(request) {
     try {
+        const rateLimitResult = loginRateLimiter(request);
+        if (!rateLimitResult.success) {
+            return NextResponse.json(
+                { error: 'Too many requests. Please try again later.' },
+                { status: 429, headers: { 'Retry-After': String(rateLimitResult.retryAfter) } }
+            );
+        }
+
         const { email, password, turnstileToken } = await request.json();
 
         if (!email || !password) {
@@ -41,6 +53,17 @@ export async function POST(request) {
 
         if (!user || !verifyPassword(password, user.password_hash)) {
             return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
+        }
+
+        // Ban kontrolü
+        if (user.banned_until) {
+            const bannedUntil = new Date(user.banned_until);
+            if (bannedUntil > new Date()) {
+                return NextResponse.json(
+                    { error: 'Account suspended', bannedUntil: user.banned_until },
+                    { status: 403 }
+                );
+            }
         }
 
         const token = generateToken(user);

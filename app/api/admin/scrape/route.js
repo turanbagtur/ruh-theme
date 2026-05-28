@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/auth';
+import { requireAdmin, requireAuth, hasPermission } from '@/lib/auth';
 import { getDb, generateSlug } from '@/lib/db';
 import {
     scrapeSeriesInfo,
@@ -10,6 +10,8 @@ import {
 import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
+
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://yomitranslate.com';
 
 function makeUniqueSlug(db, title, excludeId = null) {
     let base = generateSlug(title);
@@ -63,7 +65,10 @@ async function downloadCover(imageUrl, title) {
 // ═══════════════════════════════════════════════════════════════════════════════
 export async function POST(request) {
     try {
-        requireAdmin(request);
+        const user = requireAuth(request);
+        if (!hasPermission(user, 'upload_chapters') && !['admin', 'manager'].includes(user.role) && user.role !== 'manager') {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
         const body = await request.json();
         const { action } = body;
         const db = getDb();
@@ -151,12 +156,26 @@ export async function POST(request) {
                         try {
                             const chapResult = db.prepare(
                                 'INSERT INTO chapters (series_id, chapter_number, title) VALUES (?, ?, ?)'
-                            ).run(series_id, ch.chapter_number, ch.title || `Chapter ${ch.chapter_number}`);
+                            ).run(series_id, ch.chapter_number, ch.title || (language === 'tr' ? `Bölüm ${ch.chapter_number}` : `Chapter ${ch.chapter_number}`));
                             const chapterId = chapResult.lastInsertRowid;
+
+                            // Google Indexing Trigger
+                            try {
+                                const seriesObj = db.prepare('SELECT slug, id FROM series WHERE id = ?').get(series_id);
+                                if (seriesObj) {
+                                    const slug = seriesObj.slug || seriesObj.id;
+                                    const chUrl = `${BASE_URL}/series/${slug}/chapter/${ch.chapter_number}`;
+                                    import('@/lib/googleIndexing').then(({ notifyGoogleIndexing }) => {
+                                        notifyGoogleIndexing(chUrl);
+                                    }).catch(() => {});
+                                }
+                            } catch (indexingErr) {
+                                console.error('Google Indexing API trigger error (scraper):', indexingErr);
+                            }
 
                             const pageUrls = await fetchChapterPages(ch);
                             if (pageUrls.length > 0) {
-                                await downloadAndSaveChapterPages(db, chapterId, pageUrls);
+                                  await downloadAndSaveChapterPages(db, chapterId, pageUrls);
                             }
                             importedCount++;
                         } catch (err) {
@@ -173,7 +192,7 @@ export async function POST(request) {
                             series_id,
                             jobId,
                             ch.chapter_number,
-                            ch.title || `Chapter ${ch.chapter_number}`,
+                            ch.title || (language === 'tr' ? `Bölüm ${ch.chapter_number}` : `Chapter ${ch.chapter_number}`),
                             ch.chapter_url || url,
                             JSON.stringify(ch),
                             'pending'
@@ -233,11 +252,29 @@ export async function POST(request) {
                     let chapterMeta;
                     try { chapterMeta = JSON.parse(row.pages_json); } catch { chapterMeta = {}; }
 
+                    // Get source language for this series
+                    const sourceObj = db.prepare('SELECT language FROM scraper_sources WHERE series_id = ? LIMIT 1').get(row.series_id);
+                    const lang = sourceObj?.language || 'en';
+
                     // Create chapter record
                     const chapResult = db.prepare(
                         'INSERT INTO chapters (series_id, chapter_number, title) VALUES (?, ?, ?)'
-                    ).run(row.series_id, row.chapter_number, row.chapter_title || `Chapter ${row.chapter_number}`);
+                    ).run(row.series_id, row.chapter_number, row.chapter_title || (lang === 'tr' ? `Bölüm ${row.chapter_number}` : `Chapter ${row.chapter_number}`));
                     const chapterId = chapResult.lastInsertRowid;
+
+                    // Google Indexing Trigger
+                    try {
+                        const seriesObj = db.prepare('SELECT slug, id FROM series WHERE id = ?').get(row.series_id);
+                        if (seriesObj) {
+                            const slug = seriesObj.slug || seriesObj.id;
+                            const chUrl = `${BASE_URL}/series/${slug}/chapter/${row.chapter_number}`;
+                            import('@/lib/googleIndexing').then(({ notifyGoogleIndexing }) => {
+                                notifyGoogleIndexing(chUrl);
+                            }).catch(() => {});
+                        }
+                    } catch (indexingErr) {
+                        console.error('Google Indexing API trigger error (publish pending):', indexingErr);
+                    }
 
                     // Fetch & download pages
                     const pageUrls = await fetchChapterPages({ ...chapterMeta, chapter_url: row.source_url });
@@ -281,7 +318,7 @@ export async function POST(request) {
                     for (const ch of newChaps) {
                         db.prepare(
                             'INSERT OR IGNORE INTO scraper_pending_chapters (series_id, chapter_number, chapter_title, source_url, pages_json, status) VALUES (?, ?, ?, ?, ?, ?)'
-                        ).run(src.series_id, ch.chapter_number, ch.title || `Chapter ${ch.chapter_number}`, ch.chapter_url || src.source_url, JSON.stringify(ch), 'pending');
+                        ).run(src.series_id, ch.chapter_number, ch.title || (src.language === 'tr' ? `Bölüm ${ch.chapter_number}` : `Chapter ${ch.chapter_number}`), ch.chapter_url || src.source_url, JSON.stringify(ch), 'pending');
                     }
 
                     const series = db.prepare('SELECT title FROM series WHERE id=?').get(src.series_id);
@@ -324,7 +361,7 @@ export async function POST(request) {
             for (const ch of chapters) {
                 db.prepare(
                     'INSERT OR IGNORE INTO scraper_pending_chapters (series_id, chapter_number, chapter_title, source_url, pages_json, status) VALUES (?, ?, ?, ?, ?, ?)'
-                ).run(seriesId, ch.chapter_number, ch.title || `Chapter ${ch.chapter_number}`, ch.chapter_url || url, JSON.stringify(ch), 'pending');
+                ).run(seriesId, ch.chapter_number, ch.title || (language === 'tr' ? `Bölüm ${ch.chapter_number}` : `Chapter ${ch.chapter_number}`), ch.chapter_url || url, JSON.stringify(ch), 'pending');
             }
 
             return NextResponse.json({
@@ -354,7 +391,10 @@ export async function POST(request) {
 // ═══════════════════════════════════════════════════════════════════════════════
 export async function GET(request) {
     try {
-        requireAdmin(request);
+        const user = requireAuth(request);
+        if (!hasPermission(user, 'upload_chapters') && !['admin', 'manager'].includes(user.role) && user.role !== 'manager') {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
         const db = getDb();
         const { searchParams } = new URL(request.url);
         const seriesId = searchParams.get('seriesId');

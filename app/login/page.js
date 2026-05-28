@@ -16,6 +16,7 @@ export default function LoginPage() {
     const [siteKey, setSiteKey] = useState('');
 
     useEffect(() => {
+        if (process.env.NEXT_PUBLIC_DISABLE_TURNSTILE === '1') return;
         fetch('/api/settings')
             .then(r => r.json())
             .then(data => {
@@ -31,7 +32,7 @@ export default function LoginPage() {
         setError('');
         // If Turnstile is configured and token not yet received, block
         if (siteKey && !turnstileToken) {
-            setError('Please complete the human verification.');
+            setError('Lütfen insan doğrulamasını tamamlayın.');
             return;
         }
         setLoading(true);
@@ -53,18 +54,18 @@ export default function LoginPage() {
     return (
         <div className="auth-page">
             <div className="auth-card fade-in">
-                <h1>Welcome Back</h1>
-                <p className="auth-subtitle">Sign in to continue reading</p>
+                <h1>Tekrar Hoş Geldiniz</h1>
+                <p className="auth-subtitle">Okumaya devam etmek için giriş yapın</p>
 
                 {error && <div className="alert alert-error">{error}</div>}
 
                 <form onSubmit={handleSubmit}>
                     <div className="form-group">
-                        <label>Email</label>
+                        <label>E-posta</label>
                         <input
                             type="email"
                             className="form-input"
-                            placeholder="your@email.com"
+                            placeholder="eposta@adresiniz.com"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             autoComplete="off"
@@ -73,7 +74,7 @@ export default function LoginPage() {
                     </div>
 
                     <div className="form-group">
-                        <label>Password</label>
+                        <label>Şifre</label>
                         <input
                             type="password"
                             className="form-input"
@@ -89,7 +90,7 @@ export default function LoginPage() {
                         <TurnstileWidget
                             siteKey={siteKey}
                             onVerify={(token) => setTurnstileToken(token || '')}
-                            onError={() => setError('Turnstile verification error. Please refresh.')}
+                            onError={() => setError('Turnstile doğrulama hatası. Lütfen sayfayı yenileyin.')}
                         />
                     )}
 
@@ -99,12 +100,12 @@ export default function LoginPage() {
                         style={{ width: '100%', marginTop: 8 }}
                         disabled={loading || (siteKey && !turnstileToken)}
                     >
-                        {loading ? 'Signing in...' : 'Sign In'}
+                        {loading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
                     </button>
                 </form>
 
                 <div className="auth-footer">
-                    Don't have an account? <Link href="/register">Sign Up</Link>
+                    Hesabınız yok mu? <Link href="/register">Kayıt Ol</Link>
                 </div>
             </div>
         </div>

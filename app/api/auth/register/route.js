@@ -1,13 +1,17 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { hashPassword, generateToken } from '@/lib/auth';
+import { createRateLimiter } from '@/lib/ratelimit';
 
 // Username: 3-30 chars, alphanumeric + underscore only
 const USERNAME_REGEX = /^[a-zA-Z0-9_]{3,30}$/;
 // Basic email format check
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+const registerRateLimiter = createRateLimiter(3, 60 * 60 * 1000);
+
 async function verifyTurnstile(token) {
+    if (process.env.DISABLE_TURNSTILE === '1') return { ok: true }; // disabled via env
     const db = getDb();
     const secretRow = db.prepare("SELECT setting_value FROM app_settings WHERE setting_key = 'turnstile_secret_key'").get();
     const secret = secretRow?.setting_value;
@@ -26,6 +30,14 @@ async function verifyTurnstile(token) {
 
 export async function POST(request) {
     try {
+        const rateLimitResult = registerRateLimiter(request);
+        if (!rateLimitResult.success) {
+            return NextResponse.json(
+                { error: 'Too many requests. Please try again later.' },
+                { status: 429, headers: { 'Retry-After': String(rateLimitResult.retryAfter) } }
+            );
+        }
+
         const body = await request.json();
         const username = typeof body.username === 'string' ? body.username.trim() : '';
         const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
@@ -76,7 +88,15 @@ export async function POST(request) {
         const user = { id: result.lastInsertRowid, username, email, role: 'user' };
         const token = generateToken(user);
 
-        return NextResponse.json({ user, token }, { status: 201 });
+        const response = NextResponse.json({ user, token }, { status: 201 });
+        response.cookies.set('yomi_token', token, {
+            httpOnly: true,
+            sameSite: 'lax',
+            path: '/',
+            maxAge: 60 * 60 * 24 * 30,
+            secure: process.env.NODE_ENV === 'production',
+        });
+        return response;
     } catch (error) {
         console.error('POST /api/auth/register error:', error);
         return NextResponse.json({ error: 'Registration failed' }, { status: 500 });
