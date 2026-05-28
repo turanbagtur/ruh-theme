@@ -4,12 +4,9 @@ Ruh Theme, çeviri grupları (Manga, Webtoon, Novel) için geliştirilmiş, yük
 
 ## Özellikler
 
-- **Gelişmiş Yönetim Paneli:** Serileri, bölümleri, sayfaları, kullanıcıları ve yorumları tek bir yerden kolayca yönetin.
-- **Kullanıcı Etkileşimi:** Yorum yapma, favoriye ekleme, okuma listesi oluşturma ve yorumlarda Tenor GIF desteği.
-- **Oyunlaştırma (Gamification):** Okudukça ve etkileşime girdikçe kazanılan Yomi Puanları, görevler (quests) ve seviye/rozet sistemi.
-- **Rol Tabanlı Erişim (RBAC):** Admin, Manager, Moderator ve Team Member gibi detaylı ve güvenli yetkilendirme sistemi.
-- **Performans ve SEO:** Next.js Server Components, App Router, Turbopack, yerleşik görsel optimizasyonu (WebP) ve otomatik Sitemap/Robots.txt.
-- **Veritabanı:** Kurulumu ve yönetimi son derece kolay olan yüksek hızlı `better-sqlite3` altyapısı.
+Ruh Theme, gelişmiş bir okuma platformu için gereken yönetim panelinden oyunlaştırmaya (gamification), rol tabanlı erişimden (RBAC) yüksek performansa kadar birçok özelliğe sahiptir.
+
+👉 **Tüm detaylı özellikler için lütfen [FEATURES.md](FEATURES.md) dosyasını inceleyin.**
 
 ## Kurulum ve Çalıştırma (Geliştirici Ortamı)
 
