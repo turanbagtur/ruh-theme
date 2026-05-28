@@ -541,14 +541,7 @@ echo '/swapfile none swap sw 0 0' >> /etc/fstab
 ```
 Sonra tekrar `npm run build` dene.
 
-### Çeviri dosyaları kaydedilemiyor (Permission hatası)
-```bash
-chown -R www-data:www-data /var/www/ruh-theme/public/translations
-chown -R www-data:www-data /var/www/ruh-theme/public/uploads
-chmod -R 755 /var/www/ruh-theme/public/translations
-chmod -R 755 /var/www/ruh-theme/public/uploads
-pm2 restart ruh-theme
-```
+
 
 ### Cloudflare Turnstile çalışmıyor
 Admin panelinde `Settings` sekmesinden `API Keys` bölümüne gir. Turnstile Site Key ve Secret Key'in doğru girildiğini kontrol et. Cloudflare Dashboard'dan `ruhtheme.com` domain'ini whitelist'e aldığından emin ol.
@@ -565,11 +558,8 @@ nslookup ruhtheme.com
 ## 📊 Performans Notları
 
 - **SQLite WAL modu**: Otomatik aktif, eş zamanlı okuma/yazma için optimize
-- **Çeviri cache**: Çevrilen sayfalar veritabanında ve `/public/translations/` klasöründe saklanır. Aynı sayfa tekrar çevrilmez
 - **Statik cache**: Nginx `_next/static` dosyalarını 1 yıl cache'ler
 - **Görsel optimizasyon**: `sharp` modülü aktif
-- **Çeviri concurrency**: Aynı anda 2 paralel çeviri, API limitine takılmaz
-- **Proxy timeout**: 300 saniye — büyük bölümlerin çevirisini tamamlar
 - **İstatistikler**: Ana sayfa istatistikleri her 60 saniyede otomatik güncellenir
 
 ---
