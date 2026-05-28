@@ -1,5 +1,8 @@
 # 🚀 Ruh Theme — Sunucu Kurulum & Yayınlama Rehberi
 
+> [!WARNING]
+> **ÖNEMLİ BİLGİLENDİRME:** Bu rehberdeki komutlarda ve dosyalarda (`.env.local`, Nginx ayarları, klasör yolları vb.) yer alan **`ruhtheme.com`** ve **`ruh-theme`** ifadeleri tamamen birer *örnektir*. Komutları kendi sunucunuzda çalıştırırken bu kısımları **kendi satın aldığınız alan adınız (domain)** ile değiştirmeyi kesinlikle unutmayın. Kopyala-yapıştır yaparken dikkatli olun, aksi takdirde uygulamanız çalışmayacaktır.
+
 Bu rehber, Ruh Theme uygulamasını sıfırdan bir Ubuntu/Debian Linux VPS sunucusuna kurup yayınlamayı adım adım anlatır. Her adımı sırayla uygula.
 
 ---
