@@ -13,7 +13,7 @@ Bu rehber, YomiTranslate uygulamasını sıfırdan bir Ubuntu/Debian Linux VPS s
 | **Disk** | 10 GB | 20 GB+ |
 | **Node.js** | v18.x | v20.x LTS |
 | **npm** | v9.x | v10.x |
-| **Domain** | — | yomitranslate.com |
+
 
 > **Sunucu nereden alınır?**  
 > Hetzner Cloud (en uygun fiyat), DigitalOcean, Contabo veya Vultr gibi sağlayıcılardan aylık 4–8$ ile başlayan VPS alabilirsin. Ubuntu 22.04 seç.
@@ -103,7 +103,7 @@ Eğer projen GitHub/GitLab'da ise:
 ```bash
 mkdir -p /var/www
 cd /var/www
-git clone https://github.com/KULLANICI_ADI/yomitranslate.git
+git clone https://github.com/turanbagtur/ruh-theme.git
 cd yomitranslate
 ```
 

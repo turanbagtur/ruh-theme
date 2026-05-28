@@ -54,3 +54,9 @@ komutları kullanılır.
 ## Katkıda Bulunma
 
 Geri bildirimleriniz ve pull request (PR) gönderileriniz her zaman değerlidir! Sistemi daha iyi hale getirmek için Issues kısmından bizimle iletişime geçebilirsiniz.
+
+## Destek Olun ☕
+
+Eğer bu projeyi faydalı bulduysanız ve geliştirmelere destek olmak isterseniz, bana Ko-fi üzerinden bir kahve ısmarlayabilirsiniz:
+
+[![Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/solderet)
