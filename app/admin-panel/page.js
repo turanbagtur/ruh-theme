@@ -271,6 +271,7 @@ export default function AdminPanelPage() {
         seo_title_series: '',
         seo_title_chapter: '',
         latest_updates_design: 'style4',
+        comment_design: 'comment_style1',
     });
     const [customizeSubmitting, setCustomizeSubmitting] = useState(false);
 
@@ -406,6 +407,7 @@ export default function AdminPanelPage() {
                      trending_design: sData.settings.trending_design || 'trend_style1',
                      hero_slider_design: sData.settings.hero_slider_design || 'hero_style1',
                      series_detail_design: sData.settings.series_detail_design || 'detail_style1',
+                     comment_design: sData.settings.comment_design || 'comment_style1',
                  });
 
                  let em = [];
@@ -2691,6 +2693,17 @@ export default function AdminPanelPage() {
                                             <option value="detail_style5">5. Minimalist Estetik (Clean & Focus)</option>
                                         </select>
                                         <small style={{ color: 'var(--text-muted)', fontSize: '0.71rem', display: 'block', marginTop: 4 }}>Seri detay sayfasının üst bilgi (Hero) kısmının görünümünü değiştirir.</small>
+                                    </div>
+                                    <div className="form-group" style={{ margin: 0 }}>
+                                        <label>Yorum Bölümü Tasarımı</label>
+                                        <select className="form-input" value={customize.comment_design || 'comment_style1'} onChange={e => setCustomize({ ...customize, comment_design: e.target.value })}>
+                                            <option value="comment_style1">1. Klasik (Asura Style)</option>
+                                            <option value="comment_style2">2. Discord Chat Tarzı</option>
+                                            <option value="comment_style3">3. Modern Minimalist (Glassmorphism)</option>
+                                            <option value="comment_style4">4. Siberpunk Neon (Cyberpunk)</option>
+                                            <option value="comment_style5">5. Manga Konuşma Baloncuğu</option>
+                                        </select>
+                                        <small style={{ color: 'var(--text-muted)', fontSize: '0.71rem', display: 'block', marginTop: 4 }}>Bölüm ve seri sayfalarındaki yorum alanının görünümünü değiştirir.</small>
                                     </div>
                                 </div>
                             </div>

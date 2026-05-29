@@ -2588,38 +2588,55 @@ select {
 @media (max-width: 1024px) {
   .admin-layout {
     grid-template-columns: 1fr;
+    gap: 16px;
   }
 
   .admin-sidebar {
-    position: static;
+    position: sticky;
+    top: 60px;
+    z-index: 10;
     height: auto;
     display: flex;
-    flex-wrap: wrap;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
     padding: 12px;
-    gap: 0;
+    gap: 8px;
     border-right: none;
     border-bottom: 1px solid var(--border-color);
+    background: var(--bg-card);
+    scrollbar-width: none;
+  }
+  
+  .admin-sidebar::-webkit-scrollbar {
+    display: none;
   }
 
   .admin-sidebar-header {
-    width: 100%;
-    padding: 0 0 10px;
+    display: none;
   }
 
   .admin-nav-item {
     border-left: none;
-    border-bottom: 2px solid transparent;
-    padding: 8px 12px;
-    font-size: 0.78rem;
+    border-bottom: none;
+    padding: 8px 16px;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    border-radius: 20px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
   }
 
   .admin-nav-item.active {
-    border-bottom-color: var(--accent-light);
-    border-left-color: transparent;
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
   }
 
   .admin-content {
-    padding: 16px 0;
+    padding: 12px;
+    overflow-x: hidden;
   }
 }
 

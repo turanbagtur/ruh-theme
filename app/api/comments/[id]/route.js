@@ -79,10 +79,8 @@ export async function DELETE(request, { params }) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
-        // Soft delete: preserve thread context, mark as removed
-        db.prepare(
-            "UPDATE comments SET is_deleted = 1, content = '[Yorum silindi]', edited_at = CURRENT_TIMESTAMP WHERE id = ?"
-        ).run(id);
+        // Hard delete: remove comment and let CASCADE handle replies
+        db.prepare("DELETE FROM comments WHERE id = ?").run(id);
 
         return NextResponse.json({ message: 'Comment deleted' });
     } catch (error) {

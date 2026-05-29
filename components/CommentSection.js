@@ -44,6 +44,8 @@ const GifIcon = () => (
         <text x="4" y="16" fontSize="8" fill="currentColor" stroke="none" fontWeight="900">GIF</text>
     </svg>
 );
+const PinIcon = () => <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><line x1="12" y1="17" x2="12" y2="22"></line><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"></path></svg>;
+const ShieldIcon = () => <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>;
 
 export default function CommentSection({ chapterId, seriesId }) {
     const contextId = chapterId || seriesId;
@@ -333,6 +335,20 @@ export default function CommentSection({ chapterId, seriesId }) {
         setDeleteModal(null); showToast('Yorum silindi.');
     }
 
+    async function handlePin(commentId) {
+        if (!user || (user.role !== 'admin' && user.role !== 'manager')) return;
+        try {
+            const res = await authFetch(`/api/comments/${commentId}/pin`, { method: 'PUT' });
+            const data = await res.json();
+            if (data.success) {
+                setComments(comments.map(c => c.id === commentId ? { ...c, is_pinned: data.is_pinned } : c));
+                showToast(data.is_pinned ? 'Yorum sabitlendi.' : 'Sabitleme kaldırıldı.');
+            } else {
+                showToast(data.error || 'Sabitleme başarısız.');
+            }
+        } catch (err) { console.error(err); showToast('Sabitleme başarısız oldu.'); }
+    }
+
     function handleReportSubmit() {
         if (!reportReason) return;
         setReportModal(null); setReportReason(''); setReportDetails('');
@@ -473,16 +489,17 @@ export default function CommentSection({ chapterId, seriesId }) {
 
     function renderComment(c, isReply = false) {
         const isOwner = user && c.user_id === user.id;
-        const isAdmin = user && user.role === 'admin';
+        const isAdmin = user && (user.role === 'admin' || user.role === 'manager');
         const badge = getRankBadgeParams(c.leaderboard_rank);
         const replyCount = c.replies ? c.replies.length : c.reply_count;
         const isShown = shownReplies.has(c.id);
         const cultivation = getCultivationData(c.yomi_points || 0);
         const userAvatar = (!c.avatar_url || c.avatar_url === '/default-avatar.png') ? null : c.avatar_url;
         const isRevealed = revealedSpoilers.has(c.id);
+        const isOfficial = c.role === 'admin' || c.role === 'manager';
 
         return (
-            <div key={c.id} className={isReply ? "asura-reply-row" : "asura-comment-row"}>
+            <div key={c.id} className={`${isReply ? "asura-reply-row" : "asura-comment-row"} ${isOfficial ? "official-comment" : ""} ${c.is_pinned ? "pinned-comment" : ""}`}>
                 <div className="asura-comment-avatar-wrapper">
                     {userAvatar ? (
                         <img src={userAvatar} alt={c.username} className="asura-comment-avatar" />
@@ -505,8 +522,27 @@ export default function CommentSection({ chapterId, seriesId }) {
                 <div className="asura-comment-content">
                     <div className="asura-comment-meta" style={{ alignItems: 'flex-start', flexDirection: 'column', gap: '2px', marginBottom: '8px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                            <span className="asura-comment-username">{c.username}</span>
+                            <span className="asura-comment-username" style={isOfficial ? { color: '#ffd700', textShadow: '0 0 5px rgba(255, 215, 0, 0.3)' } : {}}>{c.username}</span>
+                            {isOfficial && (
+                                <span className="official-badge" style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                                    fontSize: '0.65rem', fontWeight: 800,
+                                    textTransform: 'uppercase', letterSpacing: '0.5px'
+                                }}>
+                                    <ShieldIcon />
+                                    Yetkili
+                                </span>
+                            )}
                             <span className="asura-comment-time">{timeAgo(c.created_at)}</span>
+                            {!!c.is_pinned && (
+                                <span className="pinned-badge" style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                                    fontSize: '0.65rem', fontWeight: 800,
+                                    textTransform: 'uppercase', letterSpacing: '0.5px'
+                                }}>
+                                    <PinIcon /> Sabitlendi
+                                </span>
+                            )}
                             {c.paragraph_index !== null && c.paragraph_index !== undefined && (
                                 <span style={{
                                     display: 'inline-flex', alignItems: 'center', gap: 3,
@@ -590,29 +626,41 @@ export default function CommentSection({ chapterId, seriesId }) {
                     )}
 
                     <div className="asura-comment-actions">
-                        <button className={`asura-action-btn ${isActive(c, '👍') ? 'active' : ''}`} onClick={() => handleReaction(c.id, '👍')} title="Beğen">
-                            <ThumbUpIcon filled={isActive(c, '👍')} /> {getCount(c, '👍') > 0 && <span>{getCount(c, '👍')}</span>}
-                        </button>
-                        <button className={`asura-action-btn ${isActive(c, '👎') ? 'active' : ''}`} onClick={() => handleReaction(c.id, '👎')} title="Beğenme">
-                            <ThumbDownIcon filled={isActive(c, '👎')} /> {getCount(c, '👎') > 0 && <span>{getCount(c, '👎')}</span>}
-                        </button>
-                        {!isReply && user && (
-                            <button className="asura-action-btn" onClick={() => { setReplyTo(replyTo === c.id ? null : c.id); setIsSpoilerReply(false); setReplyContent(''); }}>
-                                <ReplyIcon /> {appSettings.lang_reply || 'Yanıtla'}
-                            </button>
+                        {!c.is_deleted && (
+                            <>
+                                <button className={`asura-action-btn ${isActive(c, '👍') ? 'active' : ''}`} onClick={() => handleReaction(c.id, '👍')} title="Beğen">
+                                    <ThumbUpIcon filled={isActive(c, '👍')} /> {getCount(c, '👍') > 0 && <span>{getCount(c, '👍')}</span>}
+                                </button>
+                                <button className={`asura-action-btn ${isActive(c, '👎') ? 'active' : ''}`} onClick={() => handleReaction(c.id, '👎')} title="Beğenme">
+                                    <ThumbDownIcon filled={isActive(c, '👎')} /> {getCount(c, '👎') > 0 && <span>{getCount(c, '👎')}</span>}
+                                </button>
+                                {!isReply && user && (
+                                    <button className="asura-action-btn" onClick={() => { setReplyTo(replyTo === c.id ? null : c.id); setIsSpoilerReply(false); setReplyContent(''); }}>
+                                        <ReplyIcon /> {appSettings.lang_reply || 'Yanıtla'}
+                                    </button>
+                                )}
+                            </>
                         )}
                         {user && (
                             <div style={{position: 'relative'}} ref={openMenu === c.id ? menuRef : null}>
                                 <button className="asura-action-btn" onClick={() => setOpenMenu(openMenu === c.id ? null : c.id)}><MoreIcon /></button>
                                 {openMenu === c.id && (
-                                    <div className="comment-menu">
-                                        {(isOwner || isAdmin) && (
+                                    <div className="comment-menu" style={{ left: 0, right: 'auto', minWidth: 160 }}>
+                                        {isAdmin && (
+                                            <>
+                                                <button className="comment-menu-item" onClick={() => { handlePin(c.id); setOpenMenu(null); }}>
+                                                    <PinIcon /> {c.is_pinned ? 'Sabitlemeyi Kaldır' : 'Sabitle'}
+                                                </button>
+                                                <div style={{ height: 1, background: 'var(--border)', margin: '4px 0' }}></div>
+                                            </>
+                                        )}
+                                        {!c.is_deleted && (isOwner || isAdmin) && (
                                             <>
                                                 <button className="comment-menu-item" onClick={() => { setEditingComment(c.id); setEditContent(c.content); setOpenMenu(null); }}><EditIcon /> {appSettings.lang_edit || 'Düzenle'}</button>
                                                 <button className="comment-menu-item danger" onClick={() => { setDeleteModal(c.id); setOpenMenu(null); }}><TrashIcon /> {appSettings.lang_delete || 'Sil'}</button>
                                             </>
                                         )}
-                                        {!isOwner && <button className="comment-menu-item danger" onClick={() => { setReportModal(c.id); setOpenMenu(null); }}><FlagIcon /> {appSettings.lang_report || 'Bildir'}</button>}
+                                        {!c.is_deleted && !isOwner && <button className="comment-menu-item danger" onClick={() => { setReportModal(c.id); setOpenMenu(null); }}><FlagIcon /> {appSettings.lang_report || 'Bildir'}</button>}
                                     </div>
                                 )}
                             </div>
@@ -683,7 +731,371 @@ export default function CommentSection({ chapterId, seriesId }) {
     }
 
     return (
-        <div style={{ marginTop: '40px' }}>
+        <div style={{ marginTop: '40px' }} className={`comment-section-wrapper ${appSettings.comment_design || 'comment_style1'}`}>
+            <style dangerouslySetInnerHTML={{ __html: `
+                /* Global Comment Enhancements */
+                .asura-comment-row, .asura-reply-row {
+                    position: relative;
+                    z-index: 1;
+                }
+                .asura-comment-row:hover, .asura-reply-row:hover {
+                    z-index: 40;
+                }
+                
+                /* ==============================
+                   Style 1: Classic
+                   ============================== */
+                .comment_style1 .official-comment {
+                    background: linear-gradient(145deg, rgba(220, 38, 38, 0.06), rgba(220, 38, 38, 0.02)) !important;
+                    border: 1px solid rgba(220, 38, 38, 0.2) !important;
+                    border-radius: 12px !important;
+                    padding: 16px 20px !important;
+                    margin: 8px 0 !important;
+                    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15), 0 0 15px rgba(220, 38, 38, 0.03) !important;
+                }
+                .comment_style1 .official-badge {
+                    color: #ef4444;
+                    background: rgba(220, 38, 38, 0.12);
+                    padding: 2px 8px;
+                    border-radius: 6px;
+                    border: 1px solid rgba(220, 38, 38, 0.2);
+                    text-shadow: none;
+                    letter-spacing: 0.5px;
+                }
+                .comment_style1 .official-comment .asura-comment-username {
+                    color: #ef4444 !important;
+                    text-shadow: 0 0 8px rgba(220, 38, 38, 0.3) !important;
+                }
+                .comment_style1 .pinned-badge { color: #fff; background: var(--accent); border-radius: 4px; padding: 1px 6px; }
+
+                /* ==============================
+                   Style 2: Discord Chat Style
+                   ============================== */
+                .comment_style2 .asura-comment-row,
+                .comment_style2 .asura-reply-row {
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 16px;
+                    padding: 8px 16px;
+                    margin-bottom: 2px;
+                    border: none;
+                    background: transparent;
+                    border-radius: 4px;
+                    transition: background 0.15s ease;
+                }
+                .comment_style2 .asura-comment-row:hover,
+                .comment_style2 .asura-reply-row:hover {
+                    background: rgba(255, 255, 255, 0.04);
+                }
+                .comment_style2 .asura-comment-avatar-wrapper {
+                    margin-top: 2px;
+                    width: 44px;
+                    height: 44px;
+                    flex-shrink: 0;
+                }
+                .comment_style2 .asura-comment-avatar {
+                    width: 44px;
+                    height: 44px;
+                    border-radius: 50%;
+                }
+                .comment_style2 .asura-comment-content {
+                    background: transparent;
+                    padding: 0;
+                    border: none;
+                    flex: 1;
+                }
+                .comment_style2 .asura-comment-meta {
+                    flex-direction: row !important;
+                    align-items: center !important;
+                    margin-bottom: 4px !important;
+                    gap: 8px !important;
+                }
+                .comment_style2 .asura-comment-username {
+                    font-size: 1rem;
+                    font-weight: 600;
+                    color: #ffffff;
+                }
+                .comment_style2 .asura-comment-time {
+                    font-size: 0.75rem;
+                    color: #949ba4;
+                }
+                .comment_style2 .asura-comment-text {
+                    color: #dbdee1;
+                    font-size: 0.98rem;
+                    line-height: 1.5;
+                }
+                .comment_style2 .asura-comment-actions {
+                    opacity: 0.3;
+                    transition: opacity 0.2s ease;
+                }
+                .comment_style2 .asura-comment-row:hover .asura-comment-actions,
+                .comment_style2 .asura-reply-row:hover .asura-comment-actions {
+                    opacity: 1;
+                }
+                .comment_style2 .asura-reply-row::before {
+                    display: none;
+                }
+                .comment_style2 .asura-comment-row, .comment_style2 .asura-reply-row {
+                    border: none; border-bottom: 1px solid var(--border);
+                    border-radius: 0; padding: 12px 16px;
+                }
+                .comment_style2 .asura-reply-row { margin-left: 20px; border-left: 2px solid var(--border); }
+                .comment_style2 .asura-comment-avatar-wrapper, .comment_style2 .asura-comment-avatar { width: 40px; height: 40px; border-radius: 50%; }
+                .comment_style2 .official-comment {
+                    background: rgba(255, 215, 0, 0.03) !important;
+                    box-shadow: inset 3px 0 0 0 #ffd700 !important;
+                    border-left: none !important;
+                }
+                .comment_style2 .official-badge {
+                    color: #ffd700;
+                    background: rgba(255, 215, 0, 0.1);
+                    padding: 2px 6px;
+                    border-radius: 4px;
+                }
+                @media (max-width: 768px) {
+                    .comment_style2 .asura-comment-row, .comment_style2 .asura-reply-row { padding: 10px 12px; }
+                    .comment_style2 .asura-reply-row { margin-left: 12px; }
+                    .comment_style2 .asura-comment-avatar-wrapper, .comment_style2 .asura-comment-avatar { width: 36px; height: 36px; }
+                }
+
+                /* ==============================
+                   Style 3: Glassmorphism
+                   ============================== */
+                .comment_style3 .asura-comment-row,
+                .comment_style3 .asura-reply-row {
+                    background: linear-gradient(145deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%);
+                    backdrop-filter: blur(20px);
+                    -webkit-backdrop-filter: blur(20px);
+                    border: 1px solid rgba(255, 255, 255, 0.08);
+                    border-radius: 20px;
+                    padding: 24px;
+                    margin-bottom: 20px;
+                    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+                    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), border-color 0.3s ease;
+                }
+                .comment_style3 .asura-reply-row {
+                    margin-left: 40px;
+                    border-left: 4px solid var(--accent);
+                    border-radius: 0 20px 20px 20px;
+                }
+                .comment_style3 .asura-reply-row::before {
+                    display: none;
+                }
+                .comment_style3 .asura-comment-row:hover {
+                    transform: translateY(-4px);
+                    border-color: rgba(255, 255, 255, 0.15);
+                }
+                .comment_style3 .asura-comment-avatar-wrapper {
+                    width: 52px;
+                    height: 52px;
+                }
+                .comment_style3 .asura-comment-avatar {
+                    width: 52px;
+                    height: 52px;
+                    border-radius: 16px;
+                    border: 2px solid rgba(255, 255, 255, 0.1);
+                }
+                .comment_style3 .asura-comment-content {
+                    background: transparent;
+                    padding: 0;
+                    border: none;
+                }
+                .comment_style3 .asura-comment-meta {
+                    margin-bottom: 16px !important;
+                    padding-bottom: 12px;
+                    border-bottom: 1px solid rgba(255,255,255,0.06);
+                }
+                .comment_style3 .asura-comment-text {
+                    font-size: 1rem;
+                    color: rgba(255, 255, 255, 0.95);
+                    line-height: 1.7;
+                }
+                .comment_style3 .asura-comment-actions {
+                    margin-top: 16px;
+                    padding-top: 16px;
+                    border-top: 1px dashed rgba(255, 255, 255, 0.08);
+                }
+                .comment_style3 .official-comment {
+                    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2), inset 0 0 15px rgba(255, 215, 0, 0.15) !important;
+                    border-color: rgba(255, 215, 0, 0.4) !important;
+                }
+                .comment_style3 .official-badge { color: #fff; background: linear-gradient(135deg, #d4af37, #aa7c11); border-radius: 12px; padding: 2px 8px; }
+                .comment_style3 .pinned-badge { color: #fff; background: linear-gradient(135deg, var(--accent), var(--accent-hover)); border-radius: 12px; padding: 2px 8px; }
+
+                /* ==============================
+                   Style 4: Cyberpunk
+                   ============================== */
+                .comment_style4 .asura-comment-row,
+                .comment_style4 .asura-reply-row {
+                    background: rgba(10, 10, 14, 0.85);
+                    border: 1px solid var(--accent);
+                    padding: 20px;
+                    margin-bottom: 24px;
+                    position: relative;
+                    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%);
+                    box-shadow: 0 0 15px rgba(94, 114, 228, 0.15);
+                    transition: all 0.3s ease;
+                }
+                .comment_style4 .asura-comment-row::after,
+                .comment_style4 .asura-reply-row::after {
+                    content: '';
+                    position: absolute;
+                    bottom: 0;
+                    right: 0;
+                    width: 22px;
+                    height: 22px;
+                    background: var(--accent);
+                    clip-path: polygon(100% 0, 100% 100%, 0 100%);
+                }
+                .comment_style4 .asura-reply-row {
+                    margin-left: 20px;
+                    border-left: 4px solid var(--accent);
+                }
+                .comment_style4 .asura-reply-row::before { display: none; }
+                .comment_style4 .asura-comment-row:hover {
+                    box-shadow: 0 0 25px rgba(94, 114, 228, 0.4);
+                    border-color: var(--accent-light);
+                }
+                .comment_style4 .asura-comment-avatar {
+                    border-radius: 0;
+                    border: 2px solid var(--accent);
+                    filter: contrast(1.1) saturate(1.2);
+                }
+                .comment_style4 .asura-comment-username {
+                    font-family: 'Courier New', Courier, monospace;
+                    color: var(--accent-light);
+                    text-transform: uppercase;
+                    letter-spacing: 1px;
+                }
+                .comment_style4 .asura-comment-text {
+                    font-family: 'Courier New', Courier, monospace;
+                    color: #00ffcc;
+                    line-height: 1.6;
+                    text-shadow: 0 0 2px rgba(0, 255, 204, 0.3);
+                }
+                .comment_style4 .official-comment {
+                    border-color: #ffd700 !important;
+                    box-shadow: 0 0 20px rgba(255, 215, 0, 0.2) !important;
+                }
+                .comment_style4 .official-comment::after { background: #ffd700 !important; }
+                .comment_style4 .official-badge { color: #000; background: #ffd700; border-radius: 0; padding: 1px 6px; }
+                .comment_style4 .pinned-badge { color: #000; background: var(--accent); border-radius: 0; padding: 1px 6px; }
+                
+                /* ==============================
+                   Style 5: Manga Speech Bubble
+                   ============================== */
+                .comment_style5 .asura-comment-row,
+                .comment_style5 .asura-reply-row {
+                    align-items: flex-start;
+                    margin-bottom: 24px;
+                    background: transparent;
+                }
+                .comment_style5 .asura-reply-row::before { display: none; }
+                .comment_style5 .asura-reply-row {
+                    margin-left: 60px;
+                }
+                .comment_style5 .asura-comment-avatar {
+                    border-radius: 50%;
+                    border: 3px solid #fff;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+                }
+                .comment_style5 .asura-comment-content {
+                    background: #ffffff;
+                    color: #111;
+                    padding: 16px 20px;
+                    border-radius: 20px;
+                    border: 3px solid #111;
+                    position: relative;
+                    box-shadow: 4px 4px 0px rgba(0,0,0,0.8);
+                    transition: transform 0.2s;
+                }
+                .comment_style5 .asura-comment-content::before {
+                    content: '';
+                    position: absolute;
+                    top: 20px;
+                    left: -14px;
+                    width: 0;
+                    height: 0;
+                    border-style: solid;
+                    border-width: 10px 16px 10px 0;
+                    border-color: transparent #111 transparent transparent;
+                }
+                .comment_style5 .asura-comment-content::after {
+                    content: '';
+                    position: absolute;
+                    top: 20px;
+                    left: -10px;
+                    width: 0;
+                    height: 0;
+                    border-style: solid;
+                    border-width: 10px 16px 10px 0;
+                    border-color: transparent #ffffff transparent transparent;
+                }
+                .comment_style5 .asura-comment-row:hover .asura-comment-content {
+                    transform: scale(1.01) translateY(-2px);
+                }
+                .comment_style5 .asura-comment-username {
+                    color: #111;
+                    font-weight: 900;
+                    font-size: 1.05rem;
+                }
+                .comment_style5 .asura-comment-time {
+                    color: #666;
+                }
+                .comment_style5 .asura-comment-text {
+                    color: #222;
+                    font-weight: 600;
+                    font-size: 1rem;
+                    line-height: 1.5;
+                }
+                .comment_style5 .asura-action-btn {
+                    color: #555;
+                }
+                .comment_style5 .asura-action-btn:hover {
+                    color: #111;
+                }
+                .comment_style5 .asura-comment-meta {
+                    border-bottom: 2px dashed #ddd;
+                    padding-bottom: 8px;
+                    margin-bottom: 12px !important;
+                }
+                .comment_style5 .official-comment .asura-comment-content {
+                    border-color: #f59e0b !important;
+                    box-shadow: 4px 4px 0px #f59e0b !important;
+                }
+                .comment_style5 .official-comment .asura-comment-content::before { border-color: transparent #f59e0b transparent transparent !important; }
+                .comment_style5 .official-badge { color: #fff; background: #f59e0b; border-radius: 10px; padding: 2px 8px; border: 2px solid #111; }
+                .comment_style5 .pinned-badge { color: #fff; background: #111; border-radius: 10px; padding: 2px 8px; border: 2px solid #fff; }
+
+                /* ==============================
+                   Mobile Responsiveness 
+                   ============================== */
+                @media (max-width: 768px) {
+                    /* Style 1 */
+                    .comment_style1 .asura-comment-row, .comment_style1 .asura-reply-row { padding: 12px; }
+                    .comment_style1 .asura-reply-row { margin-left: 12px; }
+                    .comment_style1 .asura-comment-avatar-wrapper, .comment_style1 .asura-comment-avatar { width: 36px; height: 36px; }
+
+                    /* Style 2 */
+                    .comment_style2 .asura-comment-row, .comment_style2 .asura-reply-row { gap: 10px; padding: 10px 12px; }
+                    .comment_style2 .asura-reply-row { margin-left: 12px; }
+                    .comment_style2 .asura-comment-avatar-wrapper, .comment_style2 .asura-comment-avatar { width: 36px; height: 36px; }
+                    
+                    /* Style 3 */
+                    .comment_style3 .asura-comment-row, .comment_style3 .asura-reply-row { padding: 12px; border-radius: 12px; }
+                    .comment_style3 .asura-reply-row { margin-left: 12px; }
+                    .comment_style3 .asura-comment-avatar-wrapper, .comment_style3 .asura-comment-avatar { width: 32px; height: 32px; border-radius: 8px; }
+                    
+                    /* Style 4 */
+                    .comment_style4 .asura-comment-row, .comment_style4 .asura-reply-row { padding: 12px; }
+                    .comment_style4 .asura-reply-row { margin-left: 10px; }
+                    
+                    /* Style 5 */
+                    .comment_style5 .asura-reply-row { margin-left: 12px; }
+                    .comment_style5 .asura-comment-content { padding: 10px 12px; }
+                    .comment_style5 .asura-comment-avatar-wrapper, .comment_style5 .asura-comment-avatar { width: 36px; height: 36px; }
+                }
+            `}} />
             {/* 1. Series Reaction Bar Widget */}
             {seriesId && (
                 <div className="series-reaction-widget">

@@ -32,7 +32,7 @@ export async function GET(request) {
         if (!chapterId && !seriesId) {
             // If no chapterId or seriesId, return all comments (for admin)
             const all = db.prepare(`
-                SELECT c.*, u.username, u.avatar_url, u.yomi_points,
+                SELECT c.*, u.username, u.avatar_url, u.yomi_points, u.role,
                     (SELECT rank FROM (SELECT id, DENSE_RANK() OVER (ORDER BY yomi_points DESC) as rank FROM users) WHERE id = c.user_id) as leaderboard_rank,
                     ch.title as chapter_title, s.title as series_title
                 FROM comments c
@@ -59,18 +59,18 @@ export async function GET(request) {
             whereClause += ` AND c.paragraph_index = ${parseInt(paragraphIndex)}`;
         }
 
-        let orderByClause = 'c.created_at DESC';
+        let orderByClause = 'c.is_pinned DESC, c.created_at DESC';
         if (sort === 'oldest') {
-            orderByClause = 'c.created_at ASC';
+            orderByClause = 'c.is_pinned DESC, c.created_at ASC';
         } else if (sort === 'best') {
-            orderByClause = `COALESCE((SELECT SUM(CASE WHEN r.emoji = '👍' THEN 1 WHEN r.emoji = '👎' THEN -1 ELSE 0 END) FROM reactions r WHERE r.comment_id = c.id), 0) DESC, c.created_at DESC`;
+            orderByClause = `c.is_pinned DESC, COALESCE((SELECT SUM(CASE WHEN r.emoji = '👍' THEN 1 WHEN r.emoji = '👎' THEN -1 ELSE 0 END) FROM reactions r WHERE r.comment_id = c.id), 0) DESC, c.created_at DESC`;
         }
 
         const totalQuery = db.prepare(`SELECT COUNT(*) as count FROM comments c WHERE ${whereClause} AND c.parent_id IS NULL`).get(whereParam);
         const totalComments = totalQuery.count;
 
         const comments = db.prepare(`
-            SELECT c.*, u.username, u.avatar_url, u.yomi_points,
+            SELECT c.*, u.username, u.avatar_url, u.yomi_points, u.role,
                 (SELECT rank FROM (SELECT id, DENSE_RANK() OVER (ORDER BY yomi_points DESC) as rank FROM users) WHERE id = c.user_id) as leaderboard_rank,
                 (SELECT COUNT(*) FROM comments r WHERE r.parent_id = c.id) as reply_count
             FROM comments c
@@ -87,7 +87,7 @@ export async function GET(request) {
             `).all(comment.id);
 
             const replies = db.prepare(`
-                SELECT c.*, u.username, u.avatar_url, u.yomi_points,
+                SELECT c.*, u.username, u.avatar_url, u.yomi_points, u.role,
                 (SELECT rank FROM (SELECT id, DENSE_RANK() OVER (ORDER BY yomi_points DESC) as rank FROM users) WHERE id = c.user_id) as leaderboard_rank
                 FROM comments c
                 JOIN users u ON c.user_id = u.id
