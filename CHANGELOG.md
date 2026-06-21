@@ -4,6 +4,43 @@ Tüm önemli değişiklikler bu dosyada belgelenmiştir.
 
 ---
 
+## [v2.18.0] — 2026-06-21 (Doksan Beşinci Yayın)
+
+### 🎨 Tasarım İyileştirmeleri — Profil Sayfası Günlük Görevler Yeniden Tasarımı
+
+Günlük görevler kartlarının tasarımı elden geçirilerek daha ferah ve okunabilir hale getirildi.
+
+#### Quest Card CSS İyileştirmeleri (`app/globals.css`):
+
+- **Daha Ferah Padding**: Kart padding'i `16px` → `18px` artırıldı, içerikler birbirine daha az sıkışık
+- **İkon Container Büyütüldü**: İkon boyutu `38px` → `48px` yükseltildi, daha belirgin ve tıklanabilir görünüm
+- **Esnek Flex Layout**: Kart yapısı `flex-wrap: wrap` ile mobilde otomatik alt alta geçiyor
+- **Progress Bar İyileştirmesi**: Yükseklik `5px` → `6px`, border-radius artırıldı, gradient arka plan eklendi
+- **Reward Box**: Ödül bilgisi için ayrı bir `.quest-reward-wrap` container oluşturuldu, daha düzgün hizalama
+- **Claim Butonu**: Özel `.quest-claim-btn` sınıfı eklendi, reward ile birlikte düzgün hizalanıyor
+- **Hover Efektleri**: Kart hover'da `translateY(-1px)` ve gölge efekti eklendi
+- **Tamamlanmış Kart Stili**: Yeşil tonlarında daha belirgin tamamlanma göstergesi
+
+#### Profile Sayfası Güncellemeleri (`app/profile/page.js`):
+
+- **İpucu Box Padding**: Padding artırıldı (`6px 10px` → `10px 14px`), daha okunabilir
+- **Progress Text**: Inline span yerine `.quest-progress-text` sınıfı ile ayrı element
+- **Claimed Text**: Özel `.quest-claimed-text` sınıfı ile "Alındı" metni
+- **Glass-panel Kaldırıldı**: Quest card'lardan gereksiz `glass-panel` class'ı kaldırıldı (zaten kendi background'u var)
+
+#### Admin Card İyileştirmeleri (`app/globals.css`):
+
+- **Padding Artırıldı**: `20px` → `24px`, içerikler daha ferah
+- **H3 Başlık Stili**: Font-size `0.95rem` → `1rem`, color ve margin iyileştirmeleri
+
+#### Mobil Responsive Desteği:
+
+- **640px ve altı**: İkon küçültüldü (`42px`), padding azaltıldı, reward section yatay düzende
+- **400px ve altı**: Daha kompakt görünüm, reward section dikey düzene geçiyor
+- **Touch-friendly**: Butonlar minimum `44px` touch hedefi
+
+---
+
 ## [v2.17.0] — 2026-06-21 (Doksan Dördüncü Yayın)
 
 ### ⚡ Performans İyileştirmeleri — PageSpeed Core Web Vitals Final Optimization

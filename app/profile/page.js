@@ -739,36 +739,36 @@ const { settings: siteSettings } = useSettings() || {};
                         <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', marginTop: 4, marginBottom: 8 }}>
                             {pointsName} kazanmak için görevleri tamamlayın! Bölüm okuyarak, yorum yaparak ve sitede vakit geçirerek puan kazanabilirsiniz.
                         </p>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 12, padding: '6px 10px', background: 'rgba(94,114,228,0.08)', borderRadius: 8, border: '1px solid rgba(94,114,228,0.2)' }}>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 16, padding: '10px 14px', background: 'rgba(94,114,228,0.08)', borderRadius: 10, border: '1px solid rgba(94,114,228,0.2)', lineHeight: 1.5 }}>
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginRight: 4, verticalAlign: '-2px' }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><strong style={{ color: 'var(--accent-light)' }}>İpucu:</strong> Sitede her geçirilen dakika için {pointsName} kazanabilirsiniz. Sitede kalın, puan kazanın!
                         </div>
                         <div className="quest-board">
                             {quests.map(q => (
-                                <div key={q.id} className={`quest-card glass-panel ${q.claimed ? 'completed' : ''}`}>
-                                    <div className="quest-icon" style={{ background: q.claimed ? '#22c55e20' : 'var(--bg-tertiary)', color: q.claimed ? '#22c55e' : 'var(--text-muted)' }}>
+                                <div key={q.id} className={`quest-card ${q.claimed ? 'completed' : ''}`}>
+                                    <div className="quest-icon" style={{ background: q.claimed ? undefined : 'var(--bg-tertiary)', color: q.claimed ? undefined : 'var(--text-muted)' }}>
                                         {q.claimed ? <CheckCircleIcon /> : <QuestIcon icon={q.icon} />}
                                     </div>
                                     <div className="quest-info">
                                         <div className="quest-title">{q.title}</div>
                                         <div className="quest-desc">{q.desc}</div>
                                         <div className="quest-progress">
-                                            <div className="quest-progress-fill" style={{ width: `${Math.min(100, (q.progress / q.target) * 100)}%`, background: q.claimed ? '#22c55e' : undefined }} />
+                                            <div className="quest-progress-fill" style={{ width: `${Math.min(100, (q.progress / q.target) * 100)}%` }} />
                                         </div>
-                                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>{q.progress}/{q.target}</span>
+                                        <div className="quest-progress-text">{q.progress}/{q.target}</div>
                                     </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                                    <div className="quest-reward-wrap">
                                         <span className="quest-reward">+{q.reward} {pointsName}</span>
                                         {q.completed && !q.claimed ? (
-                                            <button className="btn btn-primary btn-sm" onClick={() => claimQuest(q.id)} disabled={claimingQuest === q.id} style={{ fontSize: '0.72rem', padding: '4px 10px' }}>
+                                            <button className="quest-claim-btn" onClick={() => claimQuest(q.id)} disabled={claimingQuest === q.id}>
                                                 {claimingQuest === q.id ? '...' : 'Ödülü Al'}
                                             </button>
                                         ) : q.claimed ? (
-                                            <span style={{ fontSize: '0.7rem', color: '#22c55e', fontWeight: 700 }}>Alındı</span>
+                                            <span className="quest-claimed-text">Alındı</span>
                                         ) : null}
                                     </div>
                                 </div>
                             ))}
-                            {quests.length === 0 && <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '20px' }}>Görevler yükleniyor...</p>}
+                            {quests.length === 0 && <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '24px' }}>Görevler yükleniyor...</p>}
                         </div>
                     </div>
                 </div>
