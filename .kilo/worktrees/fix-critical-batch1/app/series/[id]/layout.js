@@ -1,0 +1,203 @@
+import { getDb } from '@/lib/db';
+
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://yomitranslate.com';
+
+const GENRE_TR = {
+    'Action': 'Aksiyon', 'Adventure': 'Macera', 'Comedy': 'Komedi', 'Drama': 'Drama',
+    'Fantasy': 'Fantastik', 'Historical': 'Tarihi', 'Horror': 'Korku', 'Isekai': 'Isekai',
+    'Martial Arts': 'Dövüş Sanatları', 'Mystery': 'Gizem', 'Reincarnation': 'Reenkarnasyon',
+    'Romance': 'Romantik', 'School': 'Okul', 'Sci-Fi': 'Bilim Kurgu',
+    'Supernatural': 'Doğaüstü', 'Thriller': 'Gerilim', 'Ecchi': 'Ecchi', 'Harem': 'Harem',
+    'Josei': 'Josei', 'Mature': 'Yetişkin', 'Mecha': 'Mecha', 'Psychological': 'Psikolojik',
+    'Seinen': 'Seinen', 'Shoujo': 'Shoujo', 'Shounen': 'Shounen', 'Slice of Life': 'Günlük Yaşam',
+    'Sports': 'Spor', 'Tragedy': 'Trajedi', 'Webtoon': 'Webtoon', 'Manhwa': 'Manhwa', 'Manhua': 'Manhua'
+};
+
+// Server component: generates per-series metadata for SEO
+export async function generateMetadata({ params }) {
+    const { id } = await params;
+    try {
+        const db = getDb();
+        const isNumeric = /^\d+$/.test(id);
+        const series = isNumeric
+            ? db.prepare('SELECT * FROM series WHERE id = ? AND published = 1').get(id)
+            : db.prepare('SELECT * FROM series WHERE slug = ? AND published = 1').get(id);
+
+        if (!series) {
+            return {
+                title: 'Seri Bulunamadı | YomiTranslate',
+                robots: { index: false },
+            };
+        }
+
+        const slug = series.slug || series.id;
+        const canonicalUrl = `${BASE_URL}/series/${slug}`;
+        const coverUrl = series.cover_url
+            ? (series.cover_url.startsWith('http') ? series.cover_url : `${BASE_URL}${series.cover_url}`)
+            : `${BASE_URL}/icon-512.png`;
+
+        const genres = series.genres
+            ? (() => { try { return JSON.parse(series.genres); } catch { return series.genres.split(',').map(g => g.trim()).filter(Boolean); } })()
+            : [];
+        const genresTr = genres.map(g => GENRE_TR[g] || g);
+
+        const description = series.description
+            ? series.description.slice(0, 155).replace(/\s+$/, '') + (series.description.length > 155 ? '…' : '')
+            : `${series.title} mangasını YomiTranslate üzerinde ücretsiz ve Türkçe oku.`;
+
+        const keywords = [
+            series.title,
+            `${series.title} manga`,
+            `${series.title} oku`,
+            `${series.title} türkçe`,
+            `${series.title} bölümleri`,
+            ...genres,
+            ...genresTr,
+            'manga', 'manga oku', 'türkçe manga', 'yomitranslate',
+            series.type ? `${series.type} oku` : '',
+            series.type || '',
+        ].filter(Boolean).join(', ');
+
+        const settingsRows = db.prepare('SELECT setting_key, setting_value FROM app_settings WHERE setting_key IN ("site_name", "seo_title_series")').all();
+        const settings = {};
+        settingsRows.forEach(r => { settings[r.setting_key] = r.setting_value; });
+        const siteName = settings.site_name || 'YomiTranslate';
+
+        let pageTitle = `${series.title} — Oku | ${siteName}`;
+        if (settings.seo_title_series) {
+            pageTitle = settings.seo_title_series.replace(/\{series_name\}/g, series.title).replace(/\{site_name\}/g, siteName);
+        }
+
+        return {
+            title: pageTitle,
+            description,
+            keywords,
+            alternates: {
+                canonical: canonicalUrl,
+            },
+            openGraph: {
+                type: 'book',
+                url: canonicalUrl,
+                siteName: siteName,
+                title: pageTitle,
+                description,
+                images: [{
+                    url: coverUrl,
+                    width: 460,
+                    height: 650,
+                    alt: `${series.title} kapak`,
+                }],
+            },
+            twitter: {
+                card: 'summary_large_image',
+                title: pageTitle,
+                description,
+                images: [coverUrl],
+            },
+        };
+    } catch {
+        return {
+            title: 'YomiTranslate — Türkçe Manga Oku',
+        };
+    }
+}
+
+async function SeriesJsonLd({ id }) {
+    try {
+        const db = getDb();
+        const isNumeric = /^\d+$/.test(id);
+        const series = isNumeric
+            ? db.prepare('SELECT * FROM series WHERE id = ? AND published = 1').get(id)
+            : db.prepare('SELECT * FROM series WHERE slug = ? AND published = 1').get(id);
+
+        if (!series) return null;
+
+        const slug = series.slug || series.id;
+        const canonicalUrl = `${BASE_URL}/series/${slug}`;
+        const coverUrl = series.cover_url
+            ? (series.cover_url.startsWith('http') ? series.cover_url : `${BASE_URL}${series.cover_url}`)
+            : `${BASE_URL}/icon-512.png`;
+
+        const genres = series.genres
+            ? (() => { try { return JSON.parse(series.genres); } catch { return series.genres.split(',').map(g => g.trim()).filter(Boolean); } })()
+            : [];
+
+        const description = series.description
+            ? series.description.slice(0, 155).replace(/\s+$/, '') + (series.description.length > 155 ? '…' : '')
+            : `${series.title} mangasını YomiTranslate üzerinde ücretsiz ve Türkçe oku.`;
+
+        const comicSeriesSchema = {
+            '@context': 'https://schema.org',
+            '@type': 'ComicSeries',
+            '@id': `${canonicalUrl}#series`,
+            name: series.title,
+            description,
+            url: canonicalUrl,
+            image: {
+                '@type': 'ImageObject',
+                url: coverUrl,
+                width: 460,
+                height: 650,
+            },
+            genre: genres,
+            ...(series.author ? { author: { '@type': 'Person', name: series.author } } : {}),
+            publisher: {
+                '@type': 'Organization',
+                name: 'YomiTranslate',
+                url: BASE_URL,
+                logo: { '@type': 'ImageObject', url: `${BASE_URL}/icon-512.png` },
+            },
+            ...(series.status ? { creativeWorkStatus: series.status } : {}),
+        };
+
+        const breadcrumbSchema = {
+            '@context': 'https://schema.org',
+            '@type': 'BreadcrumbList',
+            itemListElement: [
+                {
+                    '@type': 'ListItem',
+                    position: 1,
+                    name: 'Ana Sayfa',
+                    item: BASE_URL,
+                },
+                {
+                    '@type': 'ListItem',
+                    position: 2,
+                    name: 'Göz At',
+                    item: `${BASE_URL}/series`,
+                },
+                {
+                    '@type': 'ListItem',
+                    position: 3,
+                    name: series.title,
+                    item: canonicalUrl,
+                },
+            ],
+        };
+
+        return (
+            <>
+                <script
+                    type="application/ld+json"
+                    dangerouslySetInnerHTML={{ __html: JSON.stringify(comicSeriesSchema) }}
+                />
+                <script
+                    type="application/ld+json"
+                    dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
+                />
+            </>
+        );
+    } catch {
+        return null;
+    }
+}
+
+export default async function SeriesLayout({ children, params }) {
+    const { id } = await params;
+    return (
+        <>
+            <SeriesJsonLd id={id} />
+            {children}
+        </>
+    );
+}

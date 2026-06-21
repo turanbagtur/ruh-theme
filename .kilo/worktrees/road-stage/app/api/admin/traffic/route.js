@@ -1,0 +1,149 @@
+import { NextResponse } from 'next/server';
+import { getDb } from '@/lib/db';
+import { getVerifiedUser } from '@/lib/auth';
+
+// GET: Site trafiği istatistikleri
+export async function GET(request) {
+    try {
+        const db = getDb();
+        const result = getVerifiedUser(request, db);
+        if (result.error) return NextResponse.json({ error: result.error }, { status: result.status });
+        const { user } = result;
+        if (!['admin', 'manager'].includes(user.role)) {
+            return NextResponse.json({ error: 'Yetkisiz' }, { status: 403 });
+        }
+
+        const { searchParams } = new URL(request.url);
+        const range = searchParams.get('range') || '7'; // gün sayısı
+
+        const days = Math.min(parseInt(range) || 7, 90);
+
+        // Son N günün günlük ziyaret sayısı
+        const dailyVisits = db.prepare(`
+            SELECT 
+                date(created_at) as date,
+                COUNT(*) as visits,
+                COUNT(DISTINCT visitor_hash) as unique_visitors
+            FROM site_traffic_log
+            WHERE created_at >= datetime('now', '-' || ? || ' days')
+            GROUP BY date(created_at)
+            ORDER BY date ASC
+        `).all(days);
+
+        // En çok ziyaret edilen sayfalar
+        const topPages = db.prepare(`
+            SELECT 
+                path,
+                COUNT(*) as visits,
+                COUNT(DISTINCT visitor_hash) as unique_visitors
+            FROM site_traffic_log
+            WHERE created_at >= datetime('now', '-' || ? || ' days')
+            GROUP BY path
+            ORDER BY visits DESC
+            LIMIT 20
+        `).all(days);
+
+        // Toplam istatistikler
+        const totalStats = db.prepare(`
+            SELECT 
+                COUNT(*) as total_visits,
+                COUNT(DISTINCT visitor_hash) as unique_visitors,
+                COUNT(DISTINCT date(created_at)) as active_days
+            FROM site_traffic_log
+            WHERE created_at >= datetime('now', '-' || ? || ' days')
+        `).get(days);
+
+        // Bugünkü ziyaret
+        const todayStats = db.prepare(`
+            SELECT 
+                COUNT(*) as visits,
+                COUNT(DISTINCT visitor_hash) as unique_visitors
+            FROM site_traffic_log
+            WHERE date(created_at) = date('now')
+        `).get();
+
+        // Saatlik dağılım (bugün)
+        const hourlyToday = db.prepare(`
+            SELECT 
+                strftime('%H', created_at) as hour,
+                COUNT(*) as visits
+            FROM site_traffic_log
+            WHERE date(created_at) = date('now')
+            GROUP BY hour
+            ORDER BY hour ASC
+        `).all();
+
+        // Yeni kullanıcı kayıtları (son N gün)
+        const newUsers = db.prepare(`
+            SELECT 
+                date(created_at) as date,
+                COUNT(*) as count
+            FROM users
+            WHERE created_at >= datetime('now', '-' || ? || ' days')
+            GROUP BY date(created_at)
+            ORDER BY date ASC
+        `).all(days);
+
+        // Yeni bölümler (son N gün)
+        const newChapters = db.prepare(`
+            SELECT 
+                date(created_at) as date,
+                COUNT(*) as count
+            FROM chapters
+            WHERE created_at >= datetime('now', '-' || ? || ' days')
+              AND (publish_at IS NULL OR publish_at <= datetime('now'))
+            GROUP BY date(created_at)
+            ORDER BY date ASC
+        `).all(days);
+
+        return NextResponse.json({
+            success: true,
+            dailyVisits,
+            topPages,
+            totalStats,
+            todayStats,
+            hourlyToday,
+            newUsers,
+            newChapters,
+            range: days,
+        });
+    } catch (error) {
+        console.error('Traffic GET error:', error);
+        return NextResponse.json({ error: 'Sunucu hatası' }, { status: 500 });
+    }
+}
+
+// POST: Trafik kaydı (anonim)
+export async function POST(request) {
+    try {
+        const db = getDb();
+        const body = await request.json();
+        const { path, referrer } = body;
+
+        if (!path) return NextResponse.json({ error: 'path gerekli' }, { status: 400 });
+
+        // Ziyaretçi hash'i (IP bazlı ama saklama)
+        const forwarded = request.headers.get('x-forwarded-for');
+        const ip = forwarded ? forwarded.split(',')[0].trim() : 'unknown';
+        const ua = request.headers.get('user-agent') || '';
+
+        // Bot kontrolü
+        const isBot = /bot|crawler|spider|scraper|headless/i.test(ua);
+        if (isBot) return NextResponse.json({ success: true });
+
+        // Ziyaretçi kimliği — günlük benzersizlik için tarih+hash
+        const today = new Date().toISOString().split('T')[0];
+        const visitorHash = Buffer.from(`${ip}-${today}`).toString('base64').substring(0, 16);
+
+        try {
+            db.prepare(`
+                INSERT INTO site_traffic_log (path, visitor_hash, referrer, user_agent)
+                VALUES (?, ?, ?, ?)
+            `).run(path, visitorHash, referrer || null, ua.substring(0, 200));
+        } catch {}
+
+        return NextResponse.json({ success: true });
+    } catch (error) {
+        return NextResponse.json({ error: 'Sunucu hatası' }, { status: 500 });
+    }
+}
