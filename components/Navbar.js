@@ -128,7 +128,6 @@ export default function Navbar({ siteSettings = {} }) {
 
     // Custom roles — yalnızca yönetici rollerine sahip kullanıcılar için çek
     // Normal kullanıcılar için gereksiz authenticated request önlenir
-    const BUILTIN_STAFF_ROLES = ['admin', 'manager', 'moderator', 'team_member'];
     useEffect(() => {
         if (!user) return;
         // Açıkça normal kullanıcıysa custom role fetch yapmaya gerek yok
