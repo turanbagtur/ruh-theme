@@ -950,7 +950,8 @@
   position: absolute;
   width: 200px;
   height: 300px;
-  transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.6s, filter 0.6s;
+  /* filter transition kaldırıldı — animasyonlu blur her frame'de repaint tetikler */
+  transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.6s;
   border-radius: 12px;
   /* -webkit-box-reflect kaldırıldı — çok pahalı, layout tetikler */
 }
@@ -975,14 +976,13 @@
 .hsh-slide.prev2 {
   transform: translateX(-240px) translateZ(-100px) rotateY(55deg);
   z-index: 3;
-  opacity: 0.4;
-  filter: brightness(0.3) blur(2px);
+  /* blur() animasyonu kaldırıldı (repaint) — opacity düşürülerek aynı efekt GPU üzerinde */
+  opacity: 0.18;
 }
 .hsh-slide.next2 {
   transform: translateX(240px) translateZ(-100px) rotateY(-55deg);
   z-index: 3;
-  opacity: 0.4;
-  filter: brightness(0.3) blur(2px);
+  opacity: 0.18;
 }
 .hsh-slide.hidden {
   transform: translateX(0) translateZ(-200px);
@@ -1360,14 +1360,25 @@
   transform: translateX(0) scale(1.1);
   z-index: 5;
   background: linear-gradient(45deg, #0ff, #f0f);
+  /* box-shadow statik — animasyonu pseudo-element üzerinden opacity ile yapıyoruz (GPU composited) */
   box-shadow: 0 0 20px rgba(0,255,255,0.5);
+  position: relative;
+}
+/* box-shadow yerine pseudo-element opacity animasyonu — paint tetiklemez */
+.hscy-slide.active::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: inherit;
+  background: linear-gradient(45deg, rgba(0,255,255,0.4), rgba(255,0,255,0.4));
+  filter: blur(8px);
+  z-index: -1;
   animation: cyberPulse 2s infinite;
 }
 @keyframes cyberPulse {
-  /* hue-rotate filter animasyonu kaldırıldı — sürekli repaint tetikler */
-  0%   { box-shadow: 0 0 20px rgba(0,255,255,0.5); }
-  50%  { box-shadow: 0 0 30px rgba(255,0,255,0.5); }
-  100% { box-shadow: 0 0 20px rgba(0,255,255,0.5); }
+  /* opacity animasyonu — sadece compositing, repaint yok */
+  0%, 100% { opacity: 0.6; }
+  50%       { opacity: 1; }
 }
 .hscy-slide.prev {
   transform: translateX(-160px) scale(0.85);

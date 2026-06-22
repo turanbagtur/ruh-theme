@@ -41,7 +41,7 @@
   --success: #2dce89;
   --warning: #fb6340;
   --danger: #f5365c;
-  --border: #38383f;
+  /* --border kaldırıldı: --border-color ile aynı değer, duplicate token */
   --radius-sm: 4px;
   --radius: 6px;
   --radius-lg: 8px;
@@ -62,10 +62,14 @@
 }
 
 html {
-  scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+}
+
+/* scroll-behavior: smooth yalnızca reduced-motion tercih etmeyenler için */
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
 }
 
 body {

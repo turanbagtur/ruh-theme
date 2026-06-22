@@ -114,7 +114,7 @@ cd ruh-theme
 
 Kendi Windows bilgisayarından PowerShell ile sunucuya kopyala:
 ```powershell
-scp -r "C:\Users\tbagt\OneDrive\Desktop\ruh-theme" root@SUNUCU_IP:/var/www/ruh-theme
+scp -r "C:\Users\KULLANICI_ADINIZ\ruh-theme" root@SUNUCU_IP:/var/www/ruh-theme
 ```
 
 Sonra sunucuda:
@@ -388,16 +388,13 @@ Artık siteye `https://ruhtheme.com` adresinden **güvenli** erişilebilir.
 
 Uygulama ilk çalıştırıldığında veritabanı otomatik oluşturulur.
 
-Varsayılan admin hesabı:
+İlk kurulumda `lib/seed.js` dosyasında tanımlı seed verileri ile bir admin hesabı oluşturulur.
 
-| Alan | Değer |
-|---|---|
-| **URL** | `https://ruhtheme.com/login` |
-| **Email** | `admin@yomitranslate.com` |
-| **Şifre** | `admin123` |
-
-> 🚨 **GİRİŞ YAPTIKTAN HEMEN SONRA** şifreyi ve e-posta adresini değiştir!  
+> ⚠️ **GÜVENLİK UYARISI:** Seed admin hesabının e-posta ve şifresini **kurulumdan hemen sonra** değiştir.  
+> Varsayılan kimlik bilgilerini burada belirtmiyoruz — `lib/seed.js` dosyasına bak ve deploy öncesi güçlü bir şifre ile değiştir.  
 > Profil sayfasına giderek hesap bilgilerini güncelle.
+
+> 🚨 **Varsayılan şifreyle production'a çıkma!** Hesap ele geçirilirse tüm site verilerine erişim sağlanabilir.
 
 Admin paneline şuradan eriş: `https://ruhtheme.com/admin-panel`
 
@@ -579,7 +576,10 @@ Kaydet ve çık.
 /var/www/ruh-theme/data/manga.db        ← Tüm veriler (kullanıcılar, seriler, vs.)
 /var/www/ruh-theme/public/uploads/      ← Manga görselleri
 /var/www/ruh-theme/.env.local           ← Ortam değişkenleri
+/var/www/ruh-theme/backups/             ← Admin panelinden oluşturulan JSON yedekler
 ```
+
+> **Not:** Cron job `/root/backups/` klasörüne SQLite dosyası kopyalarken, admin paneli yedekleme özelliği `/var/www/ruh-theme/backups/` klasörüne JSON formatında yedek oluşturur. Her iki konumu da yedekle.
 
 ---
 

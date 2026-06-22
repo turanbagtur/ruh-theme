@@ -2,11 +2,13 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useAuth } from './AuthProvider';
 import { useSettings } from './SettingsProvider';
 import TurnstileWidget from './TurnstileWidget';
 
 export default function Navbar({ siteSettings = {} }) {
+    const router = useRouter();
     const { user, logout, loading, authFetch, login, register } = useAuth();
     const { settings } = useSettings() || {};
     const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -33,8 +35,10 @@ export default function Navbar({ siteSettings = {} }) {
     const [authUsername, setAuthUsername] = useState('');
     const [authConfirmPassword, setAuthConfirmPassword] = useState('');
     const [authError, setAuthError] = useState('');
-    const [authLoading2, setAuthLoading2] = useState(false);
+    const [isFormSubmitting, setIsFormSubmitting] = useState(false);
     const [authMounted, setAuthMounted] = useState(false);
+    // Bildirim silme inline onay state'i (native confirm() yerine)
+    const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
     const [authTurnstileToken, setAuthTurnstileToken] = useState('');
     useEffect(() => { setAuthMounted(true); }, []);
 
@@ -82,16 +86,16 @@ export default function Navbar({ siteSettings = {} }) {
             setAuthError('Lütfen insan doğrulamasını tamamlayın.');
             return;
         }
-        setAuthLoading2(true);
+        setIsFormSubmitting(true);
         try {
             await login(authEmail, authPassword, authTurnstileToken);
             closeAuthModal();
-            window.location.href = '/';
+            router.push('/');
         } catch (err) {
             setAuthError(err.message);
             setAuthTurnstileToken('');
         } finally {
-            setAuthLoading2(false);
+            setIsFormSubmitting(false);
         }
     }
 
@@ -106,25 +110,29 @@ export default function Navbar({ siteSettings = {} }) {
             setAuthError('Lütfen insan doğrulamasını tamamlayın.');
             return;
         }
-        setAuthLoading2(true);
+        setIsFormSubmitting(true);
         try {
             await register(authUsername, authEmail, authPassword, authTurnstileToken);
             closeAuthModal();
-            window.location.href = '/';
+            router.push('/');
         } catch (err) {
             setAuthError(err.message);
             setAuthTurnstileToken('');
         } finally {
-            setAuthLoading2(false);
+            setIsFormSubmitting(false);
         }
     }
 
     // Custom roles for admin panel visibility check
     const [customRoles, setCustomRoles] = useState([]);
 
-    // Fetch custom roles (only when user is logged in)
+    // Custom roles — yalnızca yönetici rollerine sahip kullanıcılar için çek
+    // Normal kullanıcılar için gereksiz authenticated request önlenir
+    const BUILTIN_STAFF_ROLES = ['admin', 'manager', 'moderator', 'team_member'];
     useEffect(() => {
         if (!user) return;
+        // Açıkça normal kullanıcıysa custom role fetch yapmaya gerek yok
+        if (user.role === 'user') return;
         async function fetchCustomRoles() {
             try {
                 const res = await authFetch('/api/admin/users?action=list-custom-roles');
@@ -239,7 +247,13 @@ export default function Navbar({ siteSettings = {} }) {
     }
 
     async function deleteAllNotifications() {
-        if (!confirm('Tüm bildirimleri silmek istediğinize emin misiniz?')) return;
+        if (!confirmDeleteAll) {
+            setConfirmDeleteAll(true);
+            // 4 saniye sonra onay state'ini sıfırla
+            setTimeout(() => setConfirmDeleteAll(false), 4000);
+            return;
+        }
+        setConfirmDeleteAll(false);
         try {
             await authFetch(`/api/notifications`, { method: 'DELETE' });
             setNotifications([]);
@@ -344,7 +358,24 @@ export default function Navbar({ siteSettings = {} }) {
                                             <span>Bildirimler</span>
                                             <div style={{ display: 'flex', gap: '10px' }}>
                                                 {unreadCount > 0 && <button onClick={markAllRead} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 600 }}>Tümünü okundu işaretle</button>}
-                                                {notifications.length > 0 && <button onClick={deleteAllNotifications} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 600 }}>Tümünü Sil</button>}
+                                                {notifications.length > 0 && (
+                                                    <button
+                                                        onClick={deleteAllNotifications}
+                                                        style={{
+                                                            background: confirmDeleteAll ? 'rgba(245,54,92,0.15)' : 'none',
+                                                            border: confirmDeleteAll ? '1px solid rgba(245,54,92,0.4)' : 'none',
+                                                            borderRadius: 4,
+                                                            color: 'var(--danger)',
+                                                            cursor: 'pointer',
+                                                            fontSize: '0.78rem',
+                                                            fontWeight: 600,
+                                                            padding: confirmDeleteAll ? '2px 6px' : '0',
+                                                            transition: 'all 0.2s',
+                                                        }}
+                                                    >
+                                                        {confirmDeleteAll ? 'Emin misin? Evet →' : 'Tümünü Sil'}
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
                                         {notifications.length === 0 ? (
@@ -602,7 +633,12 @@ export default function Navbar({ siteSettings = {} }) {
                         </button>
 
                         {authError && (
-                            <div className="alert alert-error" style={{ marginBottom: 16, fontSize: '0.82rem' }}>{authError}</div>
+                            <div
+                                className="alert alert-error"
+                                role="alert"
+                                aria-live="polite"
+                                style={{ marginBottom: 16, fontSize: '0.82rem' }}
+                            >{authError}</div>
                         )}
 
                         {authModal === 'login' ? (
@@ -628,8 +664,8 @@ export default function Navbar({ siteSettings = {} }) {
                                         onError={() => setAuthError('Doğrulama hatası. Lütfen sayfayı yenileyin.')}
                                     />
                                 )}
-                                <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: 8 }} disabled={authLoading2 || (settings?.turnstile_site_key && !authTurnstileToken)}>
-                                    {authLoading2 ? 'Giriş yapılıyor...' : 'Giriş Yap'}
+                                <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: 8 }} disabled={isFormSubmitting || (settings?.turnstile_site_key && !authTurnstileToken)}>
+                                    {isFormSubmitting ? 'Giriş yapılıyor...' : 'Giriş Yap'}
                                 </button>
                                 <p style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 16 }}>
                                     Hesabınız yok mu?{' '}
@@ -672,8 +708,8 @@ export default function Navbar({ siteSettings = {} }) {
                                         onError={() => setAuthError('Doğrulama hatası. Lütfen sayfayı yenileyin.')}
                                     />
                                 )}
-                                <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: 8 }} disabled={authLoading2 || (settings?.turnstile_site_key && !authTurnstileToken)}>
-                                    {authLoading2 ? 'Hesap oluşturuluyor...' : 'Hesap Oluştur'}
+                                <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: 8 }} disabled={isFormSubmitting || (settings?.turnstile_site_key && !authTurnstileToken)}>
+                                    {isFormSubmitting ? 'Hesap oluşturuluyor...' : 'Hesap Oluştur'}
                                 </button>
                                 <p style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 16 }}>
                                     Zaten hesabınız var mı?{' '}
