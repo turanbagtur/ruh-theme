@@ -104,11 +104,19 @@ export async function GET(request) {
             genres: JSON.parse(s.genres || '[]'),
         }));
 
+        // Arama/filtre parametresi yoksa kısa süreli CDN cache'e izin ver
+        const isFilteredRequest = search || genreParam || status || type;
+        const cacheHeader = isFilteredRequest
+            ? 'no-store'
+            : 'public, s-maxage=60, stale-while-revalidate=300';
+
         return NextResponse.json({
             series: withParsedGenres,
             total,
             page,
             hasMore: offset + series.length < total,
+        }, {
+            headers: { 'Cache-Control': cacheHeader },
         });
     } catch (error) {
         console.error('GET /api/series error:', error);

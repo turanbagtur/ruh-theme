@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { getVerifiedUser, hasAdminPanelAccess } from '@/lib/auth';
+import { batchQueue } from '@/lib/queue';
 
 // GET: Site trafiği istatistikleri
 export async function GET(request) {
@@ -116,7 +117,6 @@ export async function GET(request) {
 // POST: Trafik kaydı (anonim)
 export async function POST(request) {
     try {
-        const db = getDb();
         const body = await request.json();
         const { path, referrer } = body;
 
@@ -135,12 +135,8 @@ export async function POST(request) {
         const today = new Date().toISOString().split('T')[0];
         const visitorHash = Buffer.from(`${ip}-${today}`).toString('base64').substring(0, 16);
 
-        try {
-            db.prepare(`
-                INSERT INTO site_traffic_log (path, visitor_hash, referrer, user_agent)
-                VALUES (?, ?, ?, ?)
-            `).run(path, visitorHash, referrer || null, ua.substring(0, 200));
-        } catch {}
+        // Anlık INSERT yerine batch queue kullan — yüksek trafikte bottleneck önler
+        batchQueue.pushTraffic(path, visitorHash, referrer || null, ua.substring(0, 200));
 
         return NextResponse.json({ success: true });
     } catch (error) {
