@@ -106,7 +106,7 @@ Eğer projen GitHub/GitLab'da ise:
 ```bash
 mkdir -p /var/www
 cd /var/www
-git clone https://github.com/turanbagtur/ruh-theme.git
+git clone https://github.com/souldret/ruh-theme.git
 cd ruh-theme
 ```
 
